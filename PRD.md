@@ -199,17 +199,21 @@ export const WorkingMemorySchema = z.object({
   runId: z.string().uuid(),
   sessionId: z.string().uuid(),
   correlationId: z.string(),
-  messages: z.array(z.object({
-    role: z.enum(['user', 'assistant', 'tool']),
-    content: z.string(),
-  })),
-  retrievedContext: z.array(z.object({
-    source: z.enum(['neo4j', 'pgvector']),
-    score: z.number(),
-    content: z.string(),
-    entityId: z.string().optional(),
-    episodeId: z.string().uuid().optional(),
-  })),
+  messages: z.array(
+    z.object({
+      role: z.enum(['user', 'assistant', 'tool']),
+      content: z.string(),
+    }),
+  ),
+  retrievedContext: z.array(
+    z.object({
+      source: z.enum(['neo4j', 'pgvector']),
+      score: z.number(),
+      content: z.string(),
+      entityId: z.string().optional(),
+      episodeId: z.string().uuid().optional(),
+    }),
+  ),
   plan: z.string().optional(),
   toolOutputs: z.array(z.unknown()),
   tokenCounts: z.object({
@@ -221,7 +225,9 @@ export const WorkingMemorySchema = z.object({
 
 export type WorkingMemory = z.infer<typeof WorkingMemorySchema>;
 
-export function seedWorkingMemory(input: Pick<WorkingMemory, 'runId' | 'sessionId' | 'correlationId' | 'messages'>): WorkingMemory {
+export function seedWorkingMemory(
+  input: Pick<WorkingMemory, 'runId' | 'sessionId' | 'correlationId' | 'messages'>,
+): WorkingMemory {
   return WorkingMemorySchema.parse({
     ...input,
     retrievedContext: [],
@@ -250,14 +256,14 @@ export function mergeRetrievedContext(
 import { pgTable, uuid, text, integer, timestamp, jsonb } from 'drizzle-orm/pg-core';
 
 export const episodes = pgTable('episodes', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  sessionId:  uuid('session_id').notNull(),
-  runId:      uuid('run_id').notNull(),
-  turnIndex:  integer('turn_index').notNull(),
-  role:       text('role').notNull(),         // 'user' | 'assistant' | 'tool'
-  content:    text('content').notNull(),
-  metadata:   jsonb('metadata'),              // token counts, tool names, etc.
-  createdAt:  timestamp('created_at').defaultNow().notNull(),
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id').notNull(),
+  runId: uuid('run_id').notNull(),
+  turnIndex: integer('turn_index').notNull(),
+  role: text('role').notNull(), // 'user' | 'assistant' | 'tool'
+  content: text('content').notNull(),
+  metadata: jsonb('metadata'), // token counts, tool names, etc.
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 ```
 
@@ -283,7 +289,9 @@ export type EpisodeWriteInput = z.infer<typeof EpisodeWriteInputSchema>;
 
 export interface EpisodicRepository {
   write(input: EpisodeWriteInput): Promise<{ id: string }>;
-  findBySession(input: EpisodeFindInput): Promise<Array<EpisodeWriteInput & { id: string; createdAt: Date }>>;
+  findBySession(
+    input: EpisodeFindInput,
+  ): Promise<Array<EpisodeWriteInput & { id: string; createdAt: Date }>>;
 }
 ```
 
@@ -313,7 +321,7 @@ The core architectural differentiator. Long-term memory is maintained across **t
 import { z } from 'zod';
 
 export const EntityWriteSchema = z.object({
-  id: z.string(),           // stable semantic ID (e.g., slugified label)
+  id: z.string(), // stable semantic ID (e.g., slugified label)
   label: z.string(),
   description: z.string().optional(),
 });
@@ -321,7 +329,7 @@ export const EntityWriteSchema = z.object({
 export const RelationshipWriteSchema = z.object({
   fromId: z.string(),
   toId: z.string(),
-  type: z.string(),         // e.g., "RELATES_TO", "CONTRADICTS", "SUPPORTS"
+  type: z.string(), // e.g., "RELATES_TO", "CONTRADICTS", "SUPPORTS"
   confidence: z.number().min(0).max(1),
   episodeId: z.string().uuid(),
   createdAt: z.date().default(() => new Date()),
@@ -338,7 +346,7 @@ export interface Neo4jWriter {
 import { z } from 'zod';
 
 export const FactUpsertSchema = z.object({
-  contentHash: z.string(),     // SHA-256 of the distilled fact text
+  contentHash: z.string(), // SHA-256 of the distilled fact text
   text: z.string(),
   embedding: z.array(z.number()).length(1536),
   episodeId: z.string().uuid(),
@@ -378,6 +386,7 @@ export interface RetrievalFacade {
 ```
 
 The `retrieve` implementation performs:
+
 1. Top-K cosine similarity search against pgvector.
 2. Bounded multi-hop graph expansion in Neo4j starting from `seedEntityIds`, depth ≤ `hopDepth`.
 3. RRF (Reciprocal Rank Fusion) merge and rerank of both candidate sets.
@@ -385,12 +394,13 @@ The `retrieve` implementation performs:
 
 ### 4.4 Promotion Rules
 
-| Source Tier | Trigger | Target Tier |
-|---|---|---|
-| Working Memory (messages, toolOutputs) | `reflect` node fires at run end | Episodic (full turn written per message) |
-| Episodic row | `reflect` node fires at run end | Semantic: Neo4j MERGE (entities/relationships) AND pgvector upsert (distilled facts) |
+| Source Tier                            | Trigger                         | Target Tier                                                                          |
+| -------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------ |
+| Working Memory (messages, toolOutputs) | `reflect` node fires at run end | Episodic (full turn written per message)                                             |
+| Episodic row                           | `reflect` node fires at run end | Semantic: Neo4j MERGE (entities/relationships) AND pgvector upsert (distilled facts) |
 
 **The `reflect` node is the sole writer to Episodic and Semantic.** It performs four idempotent operations in order:
+
 1. Write each Working Memory message to Episodic (`episodes` table).
 2. Call the LLM to extract entities and relationships from the session context.
 3. `MERGE` each entity and relationship into Neo4j with provenance metadata (`episodeId`, `confidence`, `createdAt`).
@@ -411,20 +421,24 @@ import { WorkingMemorySchema } from '@repo/memory-core';
 
 export const AgentStateSchema = WorkingMemorySchema.extend({
   // Graph control
-  stepCount:    z.number().int().nonnegative().default(0),
-  maxSteps:     z.number().int().positive().default(10),
+  stepCount: z.number().int().nonnegative().default(0),
+  maxSteps: z.number().int().positive().default(10),
   shouldContinue: z.boolean().default(true),
 
   // LLM plan output
   plan: z.string().optional(),
 
   // Accumulated tool results for reflect
-  toolOutputs: z.array(z.object({
-    toolName: z.string(),
-    input: z.unknown(),
-    output: z.unknown(),
-    error: z.string().optional(),
-  })).default([]),
+  toolOutputs: z
+    .array(
+      z.object({
+        toolName: z.string(),
+        input: z.unknown(),
+        output: z.unknown(),
+        error: z.string().optional(),
+      }),
+    )
+    .default([]),
 });
 
 export type AgentState = z.infer<typeof AgentStateSchema>;
@@ -433,12 +447,14 @@ export type AgentState = z.infer<typeof AgentStateSchema>;
 ### 5.2 Node Specifications
 
 #### `ingress`
+
 - **Purpose:** Validates the inbound `RunRequest`, seeds Working Memory.
 - **Input:** Raw HTTP body from the `runs.controller.ts` endpoint.
 - **Behavior:** Applies `RunRequestSchema` (Zod parse, throws on failure), calls `seedWorkingMemory()`, sets `runId`, `sessionId`, `correlationId`.
 - **Output:** Initial `AgentState`.
 
 #### `retrieve`
+
 - **Purpose:** Hybrid Semantic recall — populates `retrievedContext` before planning.
 - **Behavior:**
   1. Embed the user's query (via OpenAI embedding API).
@@ -449,16 +465,19 @@ export type AgentState = z.infer<typeof AgentStateSchema>;
 - **Output:** `AgentState` with `retrievedContext` populated.
 
 #### `plan`
+
 - **Purpose:** LLM call that produces a structured plan.
 - **Behavior:** Constructs a prompt from `state.messages` + `state.retrievedContext`. Calls the LLM with system prompt `"You are a helpful research assistant."`. Writes the plan string to `state.plan`. Increments `state.tokenCounts`.
 - **Output:** `AgentState` with `plan` set.
 
 #### `act`
+
 - **Purpose:** Tool-use execution loop, bounded by `maxSteps`.
 - **Behavior:** Reads `state.plan`. Invokes bound tools (e.g., web search, calculator — generic stubs). Appends results to `state.toolOutputs`. Increments `state.stepCount`. Sets `state.shouldContinue = false` when plan is complete or `stepCount >= maxSteps`.
 - **Output:** `AgentState` with updated `toolOutputs` and `stepCount`.
 
 #### `reflect`
+
 - **Purpose:** Memory consolidation — promotes Working Memory to Episodic and Semantic tiers.
 - **Behavior:**
   1. Write all `state.messages` to the Episodic `episodes` table via `EpisodicRepository.write()`.
@@ -469,6 +488,7 @@ export type AgentState = z.infer<typeof AgentStateSchema>;
 - **Output:** `AgentState` unchanged (reflect is a side-effect node).
 
 #### `egress`
+
 - **Purpose:** Validates final output, prepares HTTP response.
 - **Behavior:** Applies `RunResponseSchema` (Zod parse). Populates `state.outcome`. Constructs the response envelope.
 - **Output:** `RunResponse` (not further routed in the graph).
@@ -486,6 +506,7 @@ export function shouldContinueActing(state: AgentState): 'act' | 'reflect' {
 ```
 
 **Graph topology:**
+
 ```
 ingress → retrieve → plan → act →[shouldContinueActing]→ act (loop)
                                                         ↘ reflect → egress
@@ -504,7 +525,7 @@ export class RunsController {
   @Post()
   @HttpCode(200)
   async createRun(
-    @Body() body: unknown,  // validated by global ZodValidationPipe
+    @Body() body: unknown, // validated by global ZodValidationPipe
     @Headers('x-correlation-id') correlationId: string,
     @Res({ passthrough: true }) res: Response,
   ): Promise<RunResponse> {
@@ -554,6 +575,7 @@ export class ZodValidationPipe implements PipeTransform {
 ```
 
 Applied globally in `main.ts`:
+
 ```typescript
 app.useGlobalPipes(new ZodValidationPipe(RunRequestSchema));
 ```
@@ -626,10 +648,12 @@ Configured in `packages/telemetry/src/otel.setup.ts` using `@opentelemetry/sdk-n
 **Matrix:** Node.js `20.x`, `22.x`.
 
 **Caching:**
+
 - Yarn cache via `actions/cache` keyed on `${{ hashFiles('yarn.lock') }}`.
 - Turborepo remote cache via `TURBO_TOKEN` + `TURBO_TEAM` env vars (or local cache fallback).
 
 **Jobs:**
+
 ```yaml
 jobs:
   ci:
@@ -659,6 +683,7 @@ jobs:
 **Caching:** Same as `ci.yml`.
 
 **Jobs:**
+
 ```yaml
 jobs:
   e2e:
@@ -705,6 +730,7 @@ jobs:
 **Trigger:** `push` to `main` (post-merge).
 
 **Jobs:**
+
 1. `semantic-release` — uses `@changesets/cli` or `semantic-release`. Bumps versions, generates CHANGELOG, creates GitHub Release.
 2. `docker-build-push` — builds Docker images for `apps/agent-service` and `apps/gateway`. Pushes to GHCR (`ghcr.io/${{ github.repository_owner }}/agent-service:${{ steps.release.outputs.version }}`). Uses `docker/build-push-action@v5` with `cache-from: type=gha` and `cache-to: type=gha,mode=max`.
 
@@ -715,6 +741,7 @@ jobs:
 **Matrix:** Node.js `20.x` only.
 
 **Jobs:**
+
 ```yaml
 jobs:
   agent-eval:
@@ -762,6 +789,7 @@ This is a production-grade LangGraph + NestJS 11 monorepo. Read .context/archite
 before making any changes.
 
 ## Key Rules
+
 - All memory writes go through packages/memory-core — never write to Postgres, Neo4j, or
   pgvector directly from app code.
 - The reflect node is the ONLY place that promotes data to Episodic or Semantic memory.
@@ -783,24 +811,30 @@ Generic cross-agent compatibility document — compatible with Cursor, Kilo Code
 This file is the agent-agnostic equivalent of CLAUDE.md. All rules in CLAUDE.md apply.
 
 ## Context Files
+
 Always read before starting work:
-- .context/architecture.md   — what this repo is and why
-- .context/conventions.md    — code style, naming, commit rules
-- .context/workflows.md      — step-by-step guides for common tasks
-- .context/glossary.md       — terminology reference
+
+- .context/architecture.md — what this repo is and why
+- .context/conventions.md — code style, naming, commit rules
+- .context/workflows.md — step-by-step guides for common tasks
+- .context/glossary.md — terminology reference
 
 ## Specialized Subagent Prompts
+
 Use the prompts in .agents/ to delegate to a specialized subagent when appropriate:
-- .agents/reviewer.md        — PR convention review
-- .agents/graph-author.md    — scaffold new LangGraph nodes
-- .agents/memory-author.md   — add/modify memory adapters
-- .agents/test-author.md     — write tests for new code
+
+- .agents/reviewer.md — PR convention review
+- .agents/graph-author.md — scaffold new LangGraph nodes
+- .agents/memory-author.md — add/modify memory adapters
+- .agents/test-author.md — write tests for new code
 ```
 
 ### 8.3 `.context/`
 
 #### `architecture.md`
+
 Explains:
+
 - What the repo is (extraction of production patterns, not a tutorial).
 - The Three-Brain memory model with a visual ASCII diagram.
 - Why the hybrid Neo4j + pgvector Semantic tier: symbolic traversal catches relational chains that dense search misses; dense search handles paraphrase and synonym variants that exact-match graph traversal misses. The two indices are complementary, not redundant.
@@ -808,6 +842,7 @@ Explains:
 - The NestJS 11 microservice architecture and how it hosts the LangGraph graph.
 
 #### `conventions.md`
+
 - TypeScript strict mode everywhere. No `any`. Use `unknown` + Zod parse at boundaries.
 - Zod schemas are the source of truth for types. Infer types from schemas, do not duplicate.
 - File naming: `kebab-case.ts` for all source files; `PascalCase.tsx` for React components.
@@ -817,13 +852,17 @@ Explains:
 - Test files co-located with source (`.test.ts`) for unit tests; separate `test/` directory for integration tests.
 
 #### `workflows.md`
+
 Step-by-step guides:
+
 1. **Add a new graph node:** Create `apps/agent-service/src/agent/nodes/<name>.node.ts`, implement the `(state: AgentState) => Promise<Partial<AgentState>>` signature, add OTel span wrapper, wire into `graph.ts`, add a unit test.
 2. **Add a new package:** Create `packages/<name>/`, add `package.json` with `name: "@repo/<name>"`, add to root `package.json` workspaces, extend appropriate `tsconfig/` base.
 3. **Add a new memory adapter:** Create the adapter under `packages/memory-core/src/`, implement the relevant interface (`EpisodicRepository`, `Neo4jWriter`, `Neo4jReader`, `PgvectorWriter`, `PgvectorReader`, `RetrievalFacade`), export from `packages/memory-core/src/index.ts`, add integration tests using testcontainers.
 
 #### `glossary.md`
+
 Defines:
+
 - **Working Memory, Episodic Memory, Semantic Memory** — the Three-Brain model.
 - **LangGraph node, edge, state, StateGraph, START, END.**
 - **Neo4j / Cypher basics:** node, relationship, MERGE, pattern matching.
@@ -835,20 +874,25 @@ Defines:
 ### 8.4 `.agents/`
 
 #### `reviewer.md`
+
 Subagent prompt for PR convention review. Instructs the agent to check: Conventional Commit messages, Zod schema usage at all boundaries, OTel spans on any new graph node, no direct DB/Neo4j calls outside `memory-core`, no `any` types, no `console.log`, test coverage for new nodes.
 
 #### `graph-author.md`
+
 Subagent prompt for scaffolding new LangGraph nodes. Instructs the agent to read `state.ts`, `graph.ts`, and an existing node file before writing new code. Enforces the OTel span wrapper pattern and the `Partial<AgentState>` return type.
 
 #### `memory-author.md`
+
 Subagent prompt for adding or modifying memory adapters. Instructs the agent to enforce idempotent write semantics on both Neo4j (`MERGE`, never `CREATE`) and pgvector (upsert on `content_hash`, never bare `INSERT`). Must add integration tests using testcontainers that verify replay safety.
 
 #### `test-author.md`
+
 Subagent prompt for writing tests. Specifies: Vitest for `packages/`, Jest + `@nestjs/testing` for `apps/agent-service`, testcontainers for integration tests touching real databases. No mocking of Neo4j or pgvector in integration tests — always use real containers.
 
 ### 8.5 `mcp-config/`
 
 #### `postgres.json`
+
 ```json
 {
   "mcpServers": {
@@ -864,6 +908,7 @@ Subagent prompt for writing tests. Specifies: Vitest for `packages/`, Jest + `@n
 ```
 
 #### `neo4j.json`
+
 ```json
 {
   "mcpServers": {
@@ -882,6 +927,7 @@ Subagent prompt for writing tests. Specifies: Vitest for `packages/`, Jest + `@n
 ```
 
 #### `filesystem.json`
+
 ```json
 {
   "mcpServers": {
@@ -894,6 +940,7 @@ Subagent prompt for writing tests. Specifies: Vitest for `packages/`, Jest + `@n
 ```
 
 #### `sequential-thinking.json`
+
 ```json
 {
   "mcpServers": {
@@ -963,19 +1010,23 @@ Subagent prompt for writing tests. Specifies: Vitest for `packages/`, Jest + `@n
 The `README.md` must include the following sections in this order:
 
 ### Hero Section
+
 - Large H1 title: `agent-native-monorepo`
 - Tagline: `"A production-grade chassis for stateful LangGraph agents, purpose-built for multi-agent development workflows."`
 - One-paragraph pitch explaining the repo is a Yarn 4 monorepo containing a NestJS 11 LangGraph microservice with a Three-Brain memory architecture, and that it demonstrates the intersection of monorepo engineering and production agentic systems.
 
 ### Architecture Diagram
+
 - A Mermaid `graph TD` diagram showing the full system: `console` → `gateway` → `agent-service` → `LangGraph state machine` → `memory-core` → `Postgres/pgvector` and `Neo4j`.
 - A second Mermaid `graph LR` diagram showing the LangGraph node graph: `ingress → retrieve → plan → act → reflect → egress` with the `act` self-loop edge.
 - A third Mermaid `graph TD` diagram showing the Three-Brain memory model with arrows for the promotion rules.
 
 ### "Why This Exists" Section
+
 Honest framing: this is an extraction of production patterns from a proprietary agentic platform, sanitized for public consumption. It exists to demonstrate architectural thinking in two scarce domains simultaneously: Yarn monorepo tooling and production LangGraph systems with non-trivial memory architecture.
 
 ### Quickstart
+
 ```bash
 git clone https://github.com/<owner>/agent-native-monorepo
 cd agent-native-monorepo
@@ -986,6 +1037,7 @@ yarn dev
 ```
 
 ### Three-Brain Memory Explanation
+
 - Prose explanation of Working, Episodic, and Semantic tiers.
 - Dedicated callout box for the hybrid Neo4j + pgvector Semantic tier.
 - Explanation of **why symbolic-plus-dense recall outperforms either alone:**
@@ -994,9 +1046,11 @@ yarn dev
   - Together, they provide complementary recall paths that reduce false negatives.
 
 ### LangGraph Node Reference
+
 Table: Node name | Purpose | Input state fields | Output state fields | Side effects.
 
 ### Contributing + Agent-Authoring Workflow
+
 - Standard fork/PR workflow.
 - Reference to `.context/workflows.md` for how to add nodes, packages, memory adapters.
 - Reference to `.agents/` for specialized subagent prompts.

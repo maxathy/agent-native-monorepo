@@ -15,6 +15,11 @@ async function bootstrap(): Promise<void> {
   app.useGlobalPipes(new ZodValidationPipe(RunRequestSchema));
   app.enableCors();
 
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/health', (_req: unknown, res: { json: (body: unknown) => void }) => {
+    res.json({ status: 'ok' });
+  });
+
   const port = process.env['PORT'] ?? 3000;
   await app.listen(port);
 

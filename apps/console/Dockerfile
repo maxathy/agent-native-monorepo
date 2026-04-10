@@ -1,0 +1,24 @@
+FROM node:20-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+FROM base AS deps
+COPY package.json yarn.lock .yarnrc.yml ./
+COPY .yarn .yarn
+COPY packages/tsconfig/package.json packages/tsconfig/
+COPY packages/eslint-config/package.json packages/eslint-config/
+COPY packages/shared-types/package.json packages/shared-types/
+COPY packages/agent-contracts/package.json packages/agent-contracts/
+COPY apps/console/package.json apps/console/
+RUN yarn install --immutable
+
+FROM base AS builder
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/packages/*/node_modules ./packages/
+COPY . .
+RUN yarn turbo build --filter=@repo/console
+
+FROM nginx:alpine AS runner
+COPY --from=builder /app/apps/console/dist /usr/share/nginx/html
+COPY apps/console/nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80

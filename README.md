@@ -97,7 +97,7 @@ curl -N -X POST http://localhost:3001/runs/stream \
 
 ### Prerequisites
 
-- Node.js 20.x or 22.x
+- Node.js 20.x or 22.x (not required for [Full-Stack Docker](#full-stack-docker))
 - Docker and Docker Compose
 - An OpenAI API key (for embeddings — set `OPENAI_API_KEY` in `.env`)
 
@@ -106,6 +106,26 @@ Copy `.env.example` to `.env` and fill in your API key:
 ```bash
 cp .env.example .env
 ```
+
+### Full-Stack Docker
+
+To run the entire stack (infra + all apps) in Docker without Node.js installed:
+
+```bash
+cp .env.example .env
+# Set OPENAI_API_KEY in .env
+
+docker compose --profile full up --build
+```
+
+| Service       | URL                   |
+| ------------- | --------------------- |
+| Console       | http://localhost:8080 |
+| Gateway       | http://localhost:3001 |
+| Agent Service | http://localhost:3000 |
+| Neo4j Browser | http://localhost:7474 |
+
+`docker compose up` (without `--profile`) still starts only the infrastructure services for local `yarn dev` development.
 
 ---
 
