@@ -6,7 +6,7 @@ interface RunFormProps {
 }
 
 export function RunForm({ onSubmit, isDisabled }: RunFormProps) {
-  const [sessionId, setSessionId] = useState(crypto.randomUUID());
+  const [sessionId, setSessionId] = useState<string>(crypto.randomUUID());
   const [query, setQuery] = useState('');
 
   const handleSubmit = (e: FormEvent) => {
