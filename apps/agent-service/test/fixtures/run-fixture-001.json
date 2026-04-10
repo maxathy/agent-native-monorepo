@@ -1,0 +1,46 @@
+{
+  "description": "Basic single-turn research query with synthetic memory data",
+  "input": {
+    "sessionId": "550e8400-e29b-41d4-a716-446655440000",
+    "messages": [
+      {
+        "role": "user",
+        "content": "What are the key components of a stateful agent system?"
+      }
+    ],
+    "config": {
+      "maxSteps": 5,
+      "hopDepth": 2,
+      "topK": 10
+    }
+  },
+  "expectedSeeds": {
+    "neo4j": [
+      { "id": "concept-a", "label": "Concept A", "description": "A generic test concept for evaluation." },
+      { "id": "concept-b", "label": "Concept B", "description": "Another generic test concept." }
+    ],
+    "pgvector": [
+      {
+        "contentHash": "sha256-eval-fact-001",
+        "text": "Stateful agents maintain context across multiple interactions.",
+        "episodeId": "550e8400-e29b-41d4-a716-446655440010",
+        "sessionId": "550e8400-e29b-41d4-a716-446655440000"
+      }
+    ],
+    "relationships": [
+      {
+        "fromId": "concept-a",
+        "toId": "concept-b",
+        "type": "RELATES_TO",
+        "confidence": 0.9,
+        "episodeId": "550e8400-e29b-41d4-a716-446655440010"
+      }
+    ]
+  },
+  "expectedOutcome": "success",
+  "assertions": {
+    "retrievedContextMinLength": 1,
+    "outcomeMustBe": "success",
+    "tokenCountsPositive": true
+  }
+}
