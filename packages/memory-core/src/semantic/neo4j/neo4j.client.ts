@@ -7,8 +7,5 @@ export interface Neo4jConfig {
 }
 
 export function createNeo4jClient(config: Neo4jConfig): Driver {
-  return neo4j.driver(
-    config.uri,
-    neo4j.auth.basic(config.username, config.password),
-  );
+  return neo4j.driver(config.uri, neo4j.auth.basic(config.username, config.password));
 }

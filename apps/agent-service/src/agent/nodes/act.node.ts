@@ -13,10 +13,7 @@ export interface ActNodeDeps {
   selectTool: (plan: string, tools: Tool[]) => Promise<{ toolName: string; input: unknown } | null>;
 }
 
-export async function actNode(
-  state: AgentState,
-  deps: ActNodeDeps,
-): Promise<Partial<AgentState>> {
+export async function actNode(state: AgentState, deps: ActNodeDeps): Promise<Partial<AgentState>> {
   return tracer.startActiveSpan('agent.node.act', async (span) => {
     try {
       span.setAttribute('run_id', state.runId);

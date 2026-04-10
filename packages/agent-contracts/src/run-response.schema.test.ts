@@ -7,12 +7,19 @@ describe('RunResponseSchema', () => {
     sessionId: '550e8400-e29b-41d4-a716-446655440000',
     messages: [
       { role: 'user' as const, content: 'What is LangGraph?' },
-      { role: 'assistant' as const, content: 'LangGraph is a framework for building stateful agents.' },
+      {
+        role: 'assistant' as const,
+        content: 'LangGraph is a framework for building stateful agents.',
+      },
     ],
     outcome: 'success' as const,
     tokenCounts: { prompt: 120, completion: 45 },
     retrievedContext: [
-      { source: 'pgvector' as const, score: 0.85, content: 'LangGraph enables stateful workflows.' },
+      {
+        source: 'pgvector' as const,
+        score: 0.85,
+        content: 'LangGraph enables stateful workflows.',
+      },
     ],
   };
 

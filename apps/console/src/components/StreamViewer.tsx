@@ -26,26 +26,28 @@ export function StreamViewer({ events, isStreaming }: StreamViewerProps) {
   }, [events]);
 
   return (
-    <div style={{
-      background: '#12121a',
-      border: '1px solid #2a2a3a',
-      borderRadius: 8,
-      overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '0.5rem 0.75rem',
-        borderBottom: '1px solid #2a2a3a',
-        fontSize: '0.75rem',
-        fontWeight: 600,
-        color: '#a0a0ff',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
+    <div
+      style={{
+        background: '#12121a',
+        border: '1px solid #2a2a3a',
+        borderRadius: 8,
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          padding: '0.5rem 0.75rem',
+          borderBottom: '1px solid #2a2a3a',
+          fontSize: '0.75rem',
+          fontWeight: 600,
+          color: '#a0a0ff',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}
+      >
         <span>Stream</span>
-        {isStreaming && (
-          <span style={{ color: '#4caf50', fontWeight: 400 }}>streaming...</span>
-        )}
+        {isStreaming && <span style={{ color: '#4caf50', fontWeight: 400 }}>streaming...</span>}
       </div>
 
       <div
@@ -63,13 +65,9 @@ export function StreamViewer({ events, isStreaming }: StreamViewerProps) {
         ) : (
           events.map((event, i) => (
             <div key={i} style={{ marginBottom: '0.375rem' }}>
-              <span style={{ color: nodeColors[event.node] ?? '#808090' }}>
-                [{event.node}]
-              </span>
+              <span style={{ color: nodeColors[event.node] ?? '#808090' }}>[{event.node}]</span>
               {event.delta && (
-                <span style={{ color: '#e0e0e8', marginLeft: '0.5rem' }}>
-                  {event.delta}
-                </span>
+                <span style={{ color: '#e0e0e8', marginLeft: '0.5rem' }}>{event.delta}</span>
               )}
             </div>
           ))

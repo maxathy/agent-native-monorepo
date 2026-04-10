@@ -40,18 +40,21 @@ The memory system is divided into three tiers with distinct scopes, persistence 
 and access patterns. All three tiers are exposed through `packages/memory-core`.
 
 ### Working Memory (Per-Run)
+
 - **Scope:** In-process, ephemeral — destroyed at run completion.
 - **Implementation:** LangGraph `AgentState` object. No external I/O.
 - **Purpose:** Accumulates intermediate reasoning, tool outputs, and retrieved context
   within a single agent invocation.
 
 ### Episodic Memory (Session-Scoped)
+
 - **Scope:** Persisted across runs, scoped to a `session_id`.
 - **Implementation:** Postgres table via Drizzle ORM.
 - **TTL:** Configurable via `EPISODE_TTL_DAYS` (default 90 days).
 - **Purpose:** Full turn history. Raw material for Semantic tier promotion.
 
 ### Semantic Memory (Long-Term Hybrid)
+
 Two complementary indices, written atomically by the `reflect` node:
 
 - **Neo4j Knowledge Graph:** Typed nodes (`:Concept`, `:Fact`, `:Session`) and relationships.

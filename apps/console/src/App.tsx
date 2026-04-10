@@ -77,9 +77,7 @@ export function App() {
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '2rem 1rem' }}>
       <header style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#a0a0ff' }}>
-          Agent Console
-        </h1>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#a0a0ff' }}>Agent Console</h1>
         <p style={{ fontSize: '0.875rem', color: '#808090' }}>
           LangGraph state machine with Three-Brain memory architecture
         </p>
@@ -87,7 +85,14 @@ export function App() {
 
       <RunForm onSubmit={handleSubmit} isDisabled={isStreaming} />
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '1rem',
+          marginTop: '1.5rem',
+        }}
+      >
         <StreamViewer events={events} isStreaming={isStreaming} />
         <RunInspector metadata={metadata} />
       </div>

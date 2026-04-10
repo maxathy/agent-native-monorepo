@@ -4,6 +4,7 @@ This is a production-grade LangGraph + NestJS 11 monorepo. Read .context/archite
 before making any changes.
 
 ## Key Rules
+
 - All memory writes go through packages/memory-core — never write to Postgres, Neo4j, or
   pgvector directly from app code.
 - The reflect node is the ONLY place that promotes data to Episodic or Semantic memory.

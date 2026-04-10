@@ -71,7 +71,7 @@ It exists to demonstrate architectural thinking in two domains that rarely overl
 1. **Senior monorepo engineering** — Yarn 4 workspaces, Turborepo build orchestration, shared TypeScript configs, contract-first package design with Zod schemas as the source of truth.
 2. **Production agentic systems** — LangGraph state machines with crash-safe idempotent writes, hybrid symbolic + dense memory retrieval via Neo4j and pgvector, OpenTelemetry instrumentation at the graph-node level.
 
-The agent's domain logic is intentionally trivial (a single system prompt: *"You are a helpful research assistant."*). The value is in the chassis — how the pieces connect, how memory is structured, how observability is wired, and how the monorepo scales.
+The agent's domain logic is intentionally trivial (a single system prompt: _"You are a helpful research assistant."_). The value is in the chassis — how the pieces connect, how memory is structured, how observability is wired, and how the monorepo scales.
 
 ---
 
@@ -96,11 +96,13 @@ curl -N -X POST http://localhost:3001/runs/stream \
 ```
 
 ### Prerequisites
+
 - Node.js 20.x or 22.x
 - Docker and Docker Compose
 - An OpenAI API key (for embeddings — set `OPENAI_API_KEY` in `.env`)
 
 Copy `.env.example` to `.env` and fill in your API key:
+
 ```bash
 cp .env.example .env
 ```
@@ -112,19 +114,21 @@ cp .env.example .env
 The memory system is divided into three tiers with distinct scopes, persistence strategies, and access patterns.
 
 ### Working Memory
+
 Per-run, in-process state held in the LangGraph `AgentState` object. Accumulates intermediate reasoning, tool outputs, and retrieved context. Destroyed at run completion — no external I/O.
 
 ### Episodic Memory
+
 Session-scoped turn history persisted in Postgres via Drizzle ORM. Records the full conversation per `session_id` with a configurable TTL (default 90 days). Serves as raw material for Semantic tier promotion.
 
 ### Semantic Memory (Hybrid)
 
 > **This is the architectural differentiator.** Long-term memory is maintained across two complementary indices, written atomically by the `reflect` node.
 
-| Index | Technology | What It Stores | Retrieval Pattern |
-|---|---|---|---|
-| Knowledge Graph | Neo4j 5 | Entities (`:Concept`, `:Fact`) and relationships | Bounded multi-hop Cypher traversal |
-| Dense Embeddings | pgvector | Distilled fact embeddings (1536-dim) | Cosine similarity via `<=>` operator |
+| Index            | Technology | What It Stores                                   | Retrieval Pattern                    |
+| ---------------- | ---------- | ------------------------------------------------ | ------------------------------------ |
+| Knowledge Graph  | Neo4j 5    | Entities (`:Concept`, `:Fact`) and relationships | Bounded multi-hop Cypher traversal   |
+| Dense Embeddings | pgvector   | Distilled fact embeddings (1536-dim)             | Cosine similarity via `<=>` operator |
 
 **Why both?** Dense search finds semantically similar facts (paraphrase, synonym variants) but cannot follow relational chains. Graph traversal follows explicit relationships (A→B→C) but misses paraphrase variants. Together, they provide complementary recall paths that reduce false negatives. Results are merged via **Reciprocal Rank Fusion (RRF)**.
 
@@ -132,14 +136,14 @@ Session-scoped turn history persisted in Postgres via Drizzle ORM. Records the f
 
 ## LangGraph Node Reference
 
-| Node | Purpose | Key Input Fields | Key Output Fields | Side Effects |
-|---|---|---|---|---|
-| `ingress` | Validate request, seed state | Raw HTTP body | Full `AgentState` | None |
-| `retrieve` | Hybrid semantic recall | `messages` | `retrievedContext` | pgvector query, Neo4j traversal |
-| `plan` | LLM planning step | `messages`, `retrievedContext` | `plan`, `tokenCounts` | LLM API call |
-| `act` | Tool execution loop | `plan` | `toolOutputs`, `stepCount` | Tool invocations |
-| `reflect` | Memory consolidation | Full state | *(none — side-effect node)* | Episodic write, Neo4j MERGE, pgvector upsert |
-| `egress` | Validate output, build response | Full state | `outcome` | None |
+| Node       | Purpose                         | Key Input Fields               | Key Output Fields           | Side Effects                                 |
+| ---------- | ------------------------------- | ------------------------------ | --------------------------- | -------------------------------------------- |
+| `ingress`  | Validate request, seed state    | Raw HTTP body                  | Full `AgentState`           | None                                         |
+| `retrieve` | Hybrid semantic recall          | `messages`                     | `retrievedContext`          | pgvector query, Neo4j traversal              |
+| `plan`     | LLM planning step               | `messages`, `retrievedContext` | `plan`, `tokenCounts`       | LLM API call                                 |
+| `act`      | Tool execution loop             | `plan`                         | `toolOutputs`, `stepCount`  | Tool invocations                             |
+| `reflect`  | Memory consolidation            | Full state                     | _(none — side-effect node)_ | Episodic write, Neo4j MERGE, pgvector upsert |
+| `egress`   | Validate output, build response | Full state                     | `outcome`                   | None                                         |
 
 ---
 

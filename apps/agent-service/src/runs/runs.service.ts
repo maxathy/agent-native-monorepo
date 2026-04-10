@@ -45,21 +45,34 @@ export class RunsService {
       retrieve: {
         retrievalFacade: {
           retrieve: async () => [
-            { source: 'pgvector', score: 0.85, content: 'LangGraph enables stateful agent workflows.' },
-            { source: 'neo4j', score: 0.78, content: 'Agents use a Three-Brain memory architecture.', entityId: 'memory' },
+            {
+              source: 'pgvector',
+              score: 0.85,
+              content: 'LangGraph enables stateful agent workflows.',
+            },
+            {
+              source: 'neo4j',
+              score: 0.78,
+              content: 'Agents use a Three-Brain memory architecture.',
+              entityId: 'memory',
+            },
           ],
         },
         embedQuery: stubEmbedding,
       },
       plan: {
         callLlm: async (_system: string, _user: string) => ({
-          content: 'I will research this topic and provide a comprehensive answer based on the available context.',
+          content:
+            'I will research this topic and provide a comprehensive answer based on the available context.',
           tokenCounts: { prompt: 150, completion: 45 },
         }),
       },
       act: {
         tools: [
-          { name: 'web-search', execute: async (input) => ({ results: [`Result for: ${JSON.stringify(input)}`] }) },
+          {
+            name: 'web-search',
+            execute: async (input) => ({ results: [`Result for: ${JSON.stringify(input)}`] }),
+          },
         ],
         selectTool: async () => null, // Stub: no tool needed
       },
@@ -77,7 +90,9 @@ export class RunsService {
           ensureTable: async () => {},
         },
         extractEntities: async () => ({
-          entities: [{ id: 'langgraph', label: 'LangGraph', description: 'Framework for stateful agents' }],
+          entities: [
+            { id: 'langgraph', label: 'LangGraph', description: 'Framework for stateful agents' },
+          ],
           relationships: [],
           facts: [{ text: 'LangGraph is used for building stateful agent workflows.' }],
         }),
@@ -86,10 +101,7 @@ export class RunsService {
     };
   }
 
-  async execute(params: {
-    body: unknown;
-    correlationId: string;
-  }): Promise<RunResponse> {
+  async execute(params: { body: unknown; correlationId: string }): Promise<RunResponse> {
     const deps = this.getDeps();
     const compiled = buildAgentGraph(deps, params.body, params.correlationId);
 
@@ -101,11 +113,7 @@ export class RunsService {
     return buildRunResponse(state);
   }
 
-  async stream(params: {
-    body: unknown;
-    correlationId: string;
-    res: Response;
-  }): Promise<void> {
+  async stream(params: { body: unknown; correlationId: string; res: Response }): Promise<void> {
     const deps = this.getDeps();
     const compiled = buildAgentGraph(deps, params.body, params.correlationId);
 

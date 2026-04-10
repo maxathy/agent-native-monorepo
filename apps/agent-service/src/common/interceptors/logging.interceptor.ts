@@ -13,8 +13,7 @@ import type { Request } from 'express';
 export class LoggingInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>();
-    const correlationId =
-      (req.headers['x-correlation-id'] as string | undefined) ?? randomUUID();
+    const correlationId = (req.headers['x-correlation-id'] as string | undefined) ?? randomUUID();
 
     // Attach to response header for traceability
     const res = context.switchToHttp().getResponse();

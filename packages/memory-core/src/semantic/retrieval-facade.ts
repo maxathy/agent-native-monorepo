@@ -38,10 +38,7 @@ const RRF_K = 60;
  * where rank is 1-indexed. Candidates appearing in both lists
  * receive the sum of their RRF scores from each list.
  */
-export function rrfMerge(
-  lists: RetrievalCandidate[][],
-  topK: number,
-): RetrievalCandidate[] {
+export function rrfMerge(lists: RetrievalCandidate[][], topK: number): RetrievalCandidate[] {
   const scoreMap = new Map<string, { candidate: RetrievalCandidate; rrfScore: number }>();
 
   for (const list of lists) {

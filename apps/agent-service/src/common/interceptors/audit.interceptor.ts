@@ -23,7 +23,9 @@ export class AuditInterceptor implements NestInterceptor {
           sessionId: (req.body as Record<string, unknown>)?.['sessionId'],
           durationMs: Date.now() - start,
           promptTokens: (data?.['tokenCounts'] as Record<string, number> | undefined)?.['prompt'],
-          completionTokens: (data?.['tokenCounts'] as Record<string, number> | undefined)?.['completion'],
+          completionTokens: (data?.['tokenCounts'] as Record<string, number> | undefined)?.[
+            'completion'
+          ],
           outcome: data?.['outcome'],
         });
       }),

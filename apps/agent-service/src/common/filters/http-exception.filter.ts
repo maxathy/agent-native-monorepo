@@ -18,16 +18,13 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     const req = ctx.getRequest<Request>();
 
     const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     const message =
-      exception instanceof HttpException
-        ? exception.message
-        : 'Internal Server Error';
+      exception instanceof HttpException ? exception.message : 'Internal Server Error';
 
-    const correlationId = getCorrelationId() ?? (req as Request & { correlationId?: string }).correlationId;
+    const correlationId =
+      getCorrelationId() ?? (req as Request & { correlationId?: string }).correlationId;
 
     const body = {
       statusCode: status,
@@ -36,7 +33,11 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
       correlationId,
     };
 
-    logger.error({ msg: 'unhandled.exception', ...body, stack: exception instanceof Error ? exception.stack : undefined });
+    logger.error({
+      msg: 'unhandled.exception',
+      ...body,
+      stack: exception instanceof Error ? exception.stack : undefined,
+    });
 
     res.status(status).json(body);
   }

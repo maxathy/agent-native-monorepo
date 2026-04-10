@@ -59,10 +59,9 @@ describe.skipIf(!DATABASE_URL || !NEO4J_URI)('Semantic Memory (integration)', ()
 
       const session = neo4jDriver.session();
       try {
-        const result = await session.run(
-          'MATCH (c:Concept {id: $id}) RETURN count(c) AS cnt',
-          { id: 'concept-a' },
-        );
+        const result = await session.run('MATCH (c:Concept {id: $id}) RETURN count(c) AS cnt', {
+          id: 'concept-a',
+        });
         const count = result.records[0]!.get('cnt').toNumber();
         expect(count).toBe(1);
       } finally {

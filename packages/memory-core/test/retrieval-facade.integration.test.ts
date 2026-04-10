@@ -45,9 +45,21 @@ describe.skipIf(!DATABASE_URL || !NEO4J_URI)('HybridRetrievalFacade (integration
 
     // Seed Neo4j with test entities and relationships
     const neo4jWriter = new CypherNeo4jWriter(neo4jDriver);
-    await neo4jWriter.mergeEntity({ id: 'langgraph', label: 'LangGraph', description: 'Framework for stateful agents.' });
-    await neo4jWriter.mergeEntity({ id: 'memory', label: 'Memory', description: 'Agent memory system.' });
-    await neo4jWriter.mergeEntity({ id: 'neo4j-concept', label: 'Neo4j', description: 'Graph database.' });
+    await neo4jWriter.mergeEntity({
+      id: 'langgraph',
+      label: 'LangGraph',
+      description: 'Framework for stateful agents.',
+    });
+    await neo4jWriter.mergeEntity({
+      id: 'memory',
+      label: 'Memory',
+      description: 'Agent memory system.',
+    });
+    await neo4jWriter.mergeEntity({
+      id: 'neo4j-concept',
+      label: 'Neo4j',
+      description: 'Graph database.',
+    });
     await neo4jWriter.mergeRelationship({
       fromId: 'langgraph',
       toId: 'memory',

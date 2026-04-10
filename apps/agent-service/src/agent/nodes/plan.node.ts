@@ -6,7 +6,10 @@ const tracer = getTracer('agent-service');
 const SYSTEM_PROMPT = 'You are a helpful research assistant.';
 
 export interface PlanNodeDeps {
-  callLlm: (systemPrompt: string, userPrompt: string) => Promise<{
+  callLlm: (
+    systemPrompt: string,
+    userPrompt: string,
+  ) => Promise<{
     content: string;
     tokenCounts: { prompt: number; completion: number };
   }>;
@@ -22,13 +25,12 @@ export async function planNode(
       span.setAttribute('session_id', state.sessionId);
 
       // Build context from messages and retrieved context
-      const contextBlock = state.retrievedContext.length > 0
-        ? `\n\nRelevant context:\n${state.retrievedContext.map((c) => `- [${c.source}] ${c.content}`).join('\n')}`
-        : '';
+      const contextBlock =
+        state.retrievedContext.length > 0
+          ? `\n\nRelevant context:\n${state.retrievedContext.map((c) => `- [${c.source}] ${c.content}`).join('\n')}`
+          : '';
 
-      const conversationHistory = state.messages
-        .map((m) => `${m.role}: ${m.content}`)
-        .join('\n');
+      const conversationHistory = state.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
 
       const userPrompt = `${conversationHistory}${contextBlock}\n\nBased on the above, create a plan to address the user's request.`;
 

@@ -17,9 +17,20 @@ export function RunForm({ onSubmit, isDisabled }: RunFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    <form
+      onSubmit={handleSubmit}
+      style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}
+    >
       <div>
-        <label htmlFor="session-id" style={{ display: 'block', fontSize: '0.75rem', color: '#808090', marginBottom: '0.25rem' }}>
+        <label
+          htmlFor="session-id"
+          style={{
+            display: 'block',
+            fontSize: '0.75rem',
+            color: '#808090',
+            marginBottom: '0.25rem',
+          }}
+        >
           Session ID
         </label>
         <input
@@ -41,7 +52,15 @@ export function RunForm({ onSubmit, isDisabled }: RunFormProps) {
       </div>
 
       <div>
-        <label htmlFor="query" style={{ display: 'block', fontSize: '0.75rem', color: '#808090', marginBottom: '0.25rem' }}>
+        <label
+          htmlFor="query"
+          style={{
+            display: 'block',
+            fontSize: '0.75rem',
+            color: '#808090',
+            marginBottom: '0.25rem',
+          }}
+        >
           Query
         </label>
         <textarea

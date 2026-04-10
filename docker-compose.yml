@@ -6,11 +6,11 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: agentdb
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -21,12 +21,12 @@ services:
       NEO4J_AUTH: neo4j/password
       NEO4J_PLUGINS: '[]'
     ports:
-      - "7474:7474"
-      - "7687:7687"
+      - '7474:7474'
+      - '7687:7687'
     volumes:
       - neo4jdata:/data
     healthcheck:
-      test: ["CMD", "neo4j", "status"]
+      test: ['CMD', 'neo4j', 'status']
       interval: 10s
       timeout: 10s
       retries: 10
@@ -34,11 +34,11 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - '6379:6379'
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 10

@@ -32,9 +32,7 @@ describe('seedWorkingMemory', () => {
   });
 
   it('throws on invalid input', () => {
-    expect(() =>
-      seedWorkingMemory({ ...baseSeed, runId: 'not-a-uuid' }),
-    ).toThrow();
+    expect(() => seedWorkingMemory({ ...baseSeed, runId: 'not-a-uuid' })).toThrow();
   });
 });
 

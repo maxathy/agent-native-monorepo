@@ -4,12 +4,12 @@ You are a specialized agent for writing tests in this monorepo.
 
 ## Test Framework Matrix
 
-| Scope | Framework | Location | I/O |
-|---|---|---|---|
-| Unit tests (`packages/`) | Vitest | Co-located `*.test.ts` | None |
-| Service tests (`apps/agent-service`) | Jest + @nestjs/testing | `test/` directory | Mocked graph |
-| Integration tests (`packages/memory-core`) | Vitest + testcontainers | `test/` directory | Real containers |
-| E2E tests (`apps/console`) | Playwright | `e2e/` directory | Full stack |
+| Scope                                      | Framework               | Location               | I/O             |
+| ------------------------------------------ | ----------------------- | ---------------------- | --------------- |
+| Unit tests (`packages/`)                   | Vitest                  | Co-located `*.test.ts` | None            |
+| Service tests (`apps/agent-service`)       | Jest + @nestjs/testing  | `test/` directory      | Mocked graph    |
+| Integration tests (`packages/memory-core`) | Vitest + testcontainers | `test/` directory      | Real containers |
+| E2E tests (`apps/console`)                 | Playwright              | `e2e/` directory       | Full stack      |
 
 ## Unit Tests (Vitest)
 
@@ -17,13 +17,19 @@ You are a specialized agent for writing tests in this monorepo.
   edge condition functions.
 - No I/O. All external dependencies are injected and stubbed.
 - Example:
+
   ```typescript
   import { describe, it, expect } from 'vitest';
   import { seedWorkingMemory } from './working-memory.helpers.js';
 
   describe('seedWorkingMemory', () => {
     it('initializes with empty arrays and zero token counts', () => {
-      const result = seedWorkingMemory({ runId: '...', sessionId: '...', correlationId: '...', messages: [] });
+      const result = seedWorkingMemory({
+        runId: '...',
+        sessionId: '...',
+        correlationId: '...',
+        messages: [],
+      });
       expect(result.retrievedContext).toEqual([]);
       expect(result.tokenCounts).toEqual({ prompt: 0, completion: 0 });
     });

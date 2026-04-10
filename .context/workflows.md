@@ -10,19 +10,23 @@ Step-by-step guides for common development tasks in this monorepo.
    export async function <name>Node(state: AgentState): Promise<Partial<AgentState>>
    ```
 3. Wrap the body in an OTel span:
+
    ```typescript
    import { getTracer } from '@repo/telemetry';
    const tracer = getTracer('agent-service');
-   
+
    return tracer.startActiveSpan('agent.node.<name>', async (span) => {
      try {
        // node logic
-       return { /* partial state updates */ };
+       return {
+         /* partial state updates */
+       };
      } finally {
        span.end();
      }
    });
    ```
+
 4. Wire the node into `apps/agent-service/src/agent/graph/graph.ts`:
    - Add the node to the `StateGraph`.
    - Define edges to/from the new node.

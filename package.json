@@ -15,9 +15,12 @@
     "test:integration": "turbo test:integration",
     "test:e2e": "turbo test:e2e",
     "test:eval": "turbo test:eval",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "clean": "turbo clean"
   },
   "devDependencies": {
+    "prettier": "^3.8.2",
     "turbo": "^2.5.0"
   }
 }

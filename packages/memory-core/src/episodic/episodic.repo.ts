@@ -21,7 +21,9 @@ export type EpisodeWriteInput = z.infer<typeof EpisodeWriteInputSchema>;
 
 export interface EpisodicRepository {
   write(input: EpisodeWriteInput): Promise<{ id: string }>;
-  findBySession(input: EpisodeFindInput): Promise<Array<EpisodeWriteInput & { id: string; createdAt: Date }>>;
+  findBySession(
+    input: EpisodeFindInput,
+  ): Promise<Array<EpisodeWriteInput & { id: string; createdAt: Date }>>;
 }
 
 export class DrizzleEpisodicRepository implements EpisodicRepository {
@@ -44,7 +46,9 @@ export class DrizzleEpisodicRepository implements EpisodicRepository {
     return { id: row!.id };
   }
 
-  async findBySession(input: EpisodeFindInput): Promise<Array<EpisodeWriteInput & { id: string; createdAt: Date }>> {
+  async findBySession(
+    input: EpisodeFindInput,
+  ): Promise<Array<EpisodeWriteInput & { id: string; createdAt: Date }>> {
     const validated = EpisodeFindInputSchema.parse(input);
     const rows = await this.db
       .select()

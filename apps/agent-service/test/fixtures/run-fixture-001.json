@@ -16,7 +16,11 @@
   },
   "expectedSeeds": {
     "neo4j": [
-      { "id": "concept-a", "label": "Concept A", "description": "A generic test concept for evaluation." },
+      {
+        "id": "concept-a",
+        "label": "Concept A",
+        "description": "A generic test concept for evaluation."
+      },
       { "id": "concept-b", "label": "Concept B", "description": "Another generic test concept." }
     ],
     "pgvector": [

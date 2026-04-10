@@ -12,10 +12,7 @@ export interface PgvectorReader {
 export class PgPgvectorReader implements PgvectorReader {
   constructor(private readonly pool: pg.Pool) {}
 
-  async searchByCosine(
-    queryEmbedding: number[],
-    topK: number,
-  ): Promise<RetrievalCandidate[]> {
+  async searchByCosine(queryEmbedding: number[], topK: number): Promise<RetrievalCandidate[]> {
     return tracer.startActiveSpan('memory.pgvector.search', async (span) => {
       try {
         span.setAttribute('topK', topK);

@@ -38,10 +38,7 @@ export function mergeRetrievedContext(
   return { ...state, retrievedContext: candidates };
 }
 
-export function appendToolOutput(
-  state: WorkingMemory,
-  output: unknown,
-): WorkingMemory {
+export function appendToolOutput(state: WorkingMemory, output: unknown): WorkingMemory {
   return { ...state, toolOutputs: [...state.toolOutputs, output] };
 }
 

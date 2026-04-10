@@ -9,9 +9,9 @@ describe('rrfMerge', () => {
   ];
 
   const neo4jResults: RetrievalCandidate[] = [
-    { source: 'neo4j', score: 0.90, content: 'Agents use memory tiers.', entityId: 'memory-tiers' },
-    { source: 'neo4j', score: 0.80, content: 'Neo4j enables graph traversal.', entityId: 'neo4j' },
-    { source: 'neo4j', score: 0.60, content: 'RRF merges ranked lists.', entityId: 'rrf' },
+    { source: 'neo4j', score: 0.9, content: 'Agents use memory tiers.', entityId: 'memory-tiers' },
+    { source: 'neo4j', score: 0.8, content: 'Neo4j enables graph traversal.', entityId: 'neo4j' },
+    { source: 'neo4j', score: 0.6, content: 'RRF merges ranked lists.', entityId: 'rrf' },
   ];
 
   it('returns results sorted by RRF score descending', () => {

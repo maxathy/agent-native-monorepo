@@ -13,6 +13,7 @@ You are a specialized agent for adding or modifying memory adapters in `packages
 This is the most critical constraint. All writes must be replay-safe:
 
 ### Neo4j
+
 - **Always use `MERGE`, never `CREATE`.** A re-run of the `reflect` node on the same
   `runId` must produce identical graph state.
 - Include provenance metadata: `episodeId`, `confidence`, `createdAt`.
@@ -24,6 +25,7 @@ This is the most critical constraint. All writes must be replay-safe:
   ```
 
 ### pgvector
+
 - **Always upsert on `content_hash`, never bare `INSERT`.** Duplicate fact text must not
   create duplicate rows.
 - Use `ON CONFLICT (content_hash) DO UPDATE` pattern.
@@ -35,6 +37,7 @@ This is the most critical constraint. All writes must be replay-safe:
   ```
 
 ### Episodic
+
 - Writes are append-only by design (new rows per turn). No upsert needed, but the
   `reflect` node should check for existing rows before writing duplicates.
 

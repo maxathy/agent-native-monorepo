@@ -21,6 +21,7 @@ jobs:
           cache: 'yarn'
 
       - run: yarn install --immutable
+      - run: yarn format:check
       - run: yarn turbo lint
       - run: yarn turbo typecheck
       - run: yarn turbo test:unit

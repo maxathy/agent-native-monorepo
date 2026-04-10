@@ -11,10 +11,7 @@ export interface Neo4jReader {
 export class CypherNeo4jReader implements Neo4jReader {
   constructor(private readonly driver: Driver) {}
 
-  async expandFromSeeds(
-    seedEntityIds: string[],
-    hopDepth: number,
-  ): Promise<RetrievalCandidate[]> {
+  async expandFromSeeds(seedEntityIds: string[], hopDepth: number): Promise<RetrievalCandidate[]> {
     return tracer.startActiveSpan('memory.neo4j.expand', async (span) => {
       try {
         span.setAttribute('seedEntityCount', seedEntityIds.length);
@@ -45,7 +42,8 @@ export class CypherNeo4jReader implements Neo4jReader {
           const candidates: RetrievalCandidate[] = result.records.map((record) => ({
             source: 'neo4j' as const,
             score: record.get('score') as number,
-            content: `${record.get('label') as string}: ${(record.get('description') as string) ?? ''}`.trim(),
+            content:
+              `${record.get('label') as string}: ${(record.get('description') as string) ?? ''}`.trim(),
             entityId: record.get('entityId') as string,
           }));
 

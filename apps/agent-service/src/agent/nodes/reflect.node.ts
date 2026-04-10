@@ -54,9 +54,7 @@ export async function reflectNode(
       }
 
       // Step 2: Extract entities and relationships from session context
-      const sessionContext = state.messages
-        .map((m) => `${m.role}: ${m.content}`)
-        .join('\n');
+      const sessionContext = state.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
 
       const extraction = await deps.extractEntities(sessionContext);
       span.setAttribute('entity_count', extraction.entities.length);
