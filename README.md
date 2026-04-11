@@ -99,7 +99,7 @@ curl -N -X POST http://localhost:3001/runs/stream \
 
 - Node.js 20.x or 22.x (not required for [Full-Stack Docker](#full-stack-docker))
 - Docker and Docker Compose
-- An OpenAI API key (for embeddings — set `OPENAI_API_KEY` in `.env`)
+- A Google AI Studio API key (set `GOOGLE_API_KEY` in `.env`)
 
 Copy `.env.example` to `.env` and fill in your API key:
 
@@ -113,7 +113,7 @@ To run the entire stack (infra + all apps) in Docker without Node.js installed:
 
 ```bash
 cp .env.example .env
-# Set OPENAI_API_KEY in .env
+# Set GOOGLE_API_KEY in .env
 
 docker compose --profile full up --build
 ```
@@ -148,7 +148,7 @@ Session-scoped turn history persisted in Postgres via Drizzle ORM. Records the f
 | Index            | Technology | What It Stores                                   | Retrieval Pattern                    |
 | ---------------- | ---------- | ------------------------------------------------ | ------------------------------------ |
 | Knowledge Graph  | Neo4j 5    | Entities (`:Concept`, `:Fact`) and relationships | Bounded multi-hop Cypher traversal   |
-| Dense Embeddings | pgvector   | Distilled fact embeddings (1536-dim)             | Cosine similarity via `<=>` operator |
+| Dense Embeddings | pgvector   | Distilled fact embeddings (768-dim)              | Cosine similarity via `<=>` operator |
 
 **Why both?** Dense search finds semantically similar facts (paraphrase, synonym variants) but cannot follow relational chains. Graph traversal follows explicit relationships (A→B→C) but misses paraphrase variants. Together, they provide complementary recall paths that reduce false negatives. Results are merged via **Reciprocal Rank Fusion (RRF)**.
 

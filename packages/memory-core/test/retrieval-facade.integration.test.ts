@@ -27,7 +27,7 @@ describe.skipIf(!DATABASE_URL || !NEO4J_URI)('HybridRetrievalFacade (integration
       CREATE TABLE IF NOT EXISTS semantic_facts (
         content_hash TEXT PRIMARY KEY,
         text TEXT NOT NULL,
-        embedding vector(1536) NOT NULL,
+        embedding vector(768) NOT NULL,
         episode_id UUID NOT NULL,
         session_id UUID NOT NULL,
         created_at TIMESTAMPTZ DEFAULT NOW()
@@ -78,7 +78,7 @@ describe.skipIf(!DATABASE_URL || !NEO4J_URI)('HybridRetrievalFacade (integration
     // Seed pgvector with test embeddings
     const pgWriter = new PgPgvectorWriter(pgPool);
     const makeEmbedding = (seed: number) =>
-      new Array(1536).fill(0).map((_, i) => Math.sin((i + seed) * 0.01));
+      new Array(768).fill(0).map((_, i) => Math.sin((i + seed) * 0.01));
 
     await pgWriter.upsertFact({
       contentHash: 'sha256-facade-test-1',
@@ -107,7 +107,7 @@ describe.skipIf(!DATABASE_URL || !NEO4J_URI)('HybridRetrievalFacade (integration
   });
 
   it('returns candidates from both Neo4j and pgvector', async () => {
-    const queryEmbedding = new Array(1536).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
+    const queryEmbedding = new Array(768).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
 
     const results = await facade.retrieve({
       queryEmbedding,
@@ -125,7 +125,7 @@ describe.skipIf(!DATABASE_URL || !NEO4J_URI)('HybridRetrievalFacade (integration
   });
 
   it('returns RRF scores in monotonically decreasing order', async () => {
-    const queryEmbedding = new Array(1536).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
+    const queryEmbedding = new Array(768).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
 
     const results = await facade.retrieve({
       queryEmbedding,

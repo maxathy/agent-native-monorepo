@@ -59,7 +59,7 @@ Two complementary indices, written atomically by the `reflect` node:
 
 - **Neo4j Knowledge Graph:** Typed nodes (`:Concept`, `:Fact`, `:Session`) and relationships.
   Enables symbolic multi-hop traversal for explainable relational recall.
-- **pgvector Collection:** Dense embeddings (text-embedding-3-small, 1536-dim). Enables
+- **pgvector Collection:** Dense embeddings (text-embedding-004, 768-dim). Enables
   cosine similarity search for paraphrase and synonym recall.
 
 **Why both?** Dense search finds semantically similar facts but cannot follow relational

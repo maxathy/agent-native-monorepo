@@ -8,7 +8,7 @@ const tracer = getTracer('memory-core');
 export const FactUpsertSchema = z.object({
   contentHash: z.string(),
   text: z.string(),
-  embedding: z.array(z.number()).length(1536),
+  embedding: z.array(z.number()).length(768),
   episodeId: z.string().uuid(),
   sessionId: z.string().uuid(),
 });
@@ -26,7 +26,7 @@ export class PgPgvectorWriter implements PgvectorWriter {
       CREATE TABLE IF NOT EXISTS semantic_facts (
         content_hash TEXT PRIMARY KEY,
         text TEXT NOT NULL,
-        embedding vector(1536) NOT NULL,
+        embedding vector(768) NOT NULL,
         episode_id UUID NOT NULL,
         session_id UUID NOT NULL,
         created_at TIMESTAMPTZ DEFAULT NOW()

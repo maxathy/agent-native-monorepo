@@ -15,6 +15,8 @@ import {
   CypherNeo4jReader,
   HybridRetrievalFacade,
 } from '@repo/memory-core';
+import { ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
+import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { buildAgentGraph, type GraphDeps } from '../agent/graph/graph.js';
 import { buildRunResponse } from '../agent/nodes/egress.node.js';
 import type { AgentState } from '../agent/graph/state.js';
@@ -30,16 +32,101 @@ export class RunsService {
   }
 
   private getDeps(): GraphDeps {
-    if (!this.graphDeps) {
-      // Provide stub deps for demo/local mode when external services aren't configured
-      return this.createStubDeps();
-    }
-    return this.graphDeps;
+    if (this.graphDeps) return this.graphDeps;
+    if (process.env['GOOGLE_API_KEY']) return this.createGeminiDeps();
+    return this.createStubDeps();
+  }
+
+  private createGeminiDeps(): GraphDeps {
+    const llm = new ChatGoogleGenerativeAI({
+      model: 'gemini-2.0-flash',
+      apiKey: process.env['GOOGLE_API_KEY'],
+    });
+
+    const embeddings = new GoogleGenerativeAIEmbeddings({
+      model: 'text-embedding-004',
+      apiKey: process.env['GOOGLE_API_KEY'],
+    });
+
+    const callLlm = async (systemPrompt: string, userPrompt: string) => {
+      const response = await llm.invoke([
+        new SystemMessage(systemPrompt),
+        new HumanMessage(userPrompt),
+      ]);
+      const meta = response.usage_metadata;
+      return {
+        content: typeof response.content === 'string' ? response.content : '',
+        tokenCounts: {
+          prompt: meta?.input_tokens ?? 0,
+          completion: meta?.output_tokens ?? 0,
+        },
+      };
+    };
+
+    const embed = (text: string) => embeddings.embedQuery(text);
+
+    return {
+      retrieve: {
+        retrievalFacade: {
+          retrieve: async () => [],
+        },
+        embedQuery: embed,
+      },
+      plan: { callLlm },
+      act: {
+        tools: [
+          {
+            name: 'web-search',
+            execute: async (input) => ({ results: [`Result for: ${JSON.stringify(input)}`] }),
+          },
+        ],
+        selectTool: async (plan, tools) => {
+          const toolNames = tools.map((t) => t.name).join(', ');
+          const response = await callLlm(
+            'You select the best tool for a task. Respond with JSON: {"toolName": "...", "input": ...} or null if no tool is needed.',
+            `Plan: ${plan}\nAvailable tools: ${toolNames}`,
+          );
+          try {
+            const parsed = JSON.parse(response.content);
+            return parsed;
+          } catch {
+            return null;
+          }
+        },
+      },
+      reflect: {
+        episodicRepo: {
+          write: async () => ({ id: crypto.randomUUID() }),
+          findBySession: async () => [],
+        },
+        neo4jWriter: {
+          mergeEntity: async () => {},
+          mergeRelationship: async () => {},
+        },
+        pgvectorWriter: {
+          upsertFact: async () => {},
+          ensureTable: async () => {},
+        },
+        extractEntities: async (context: string) => {
+          const response = await callLlm(
+            `Extract entities, relationships, and facts from the conversation. Respond with JSON:
+{"entities": [{"id": "...", "label": "...", "description": "..."}], "relationships": [{"fromId": "...", "toId": "...", "type": "...", "confidence": 0.9}], "facts": [{"text": "..."}]}`,
+            context,
+          );
+          try {
+            return JSON.parse(response.content);
+          } catch {
+            return { entities: [], relationships: [], facts: [] };
+          }
+        },
+        embedText: embed,
+      },
+    };
   }
 
   private createStubDeps(): GraphDeps {
     const stubEmbedding = () =>
-      Promise.resolve(new Array(1536).fill(0).map((_, i) => Math.sin(i * 0.01)));
+      Promise.resolve(new Array(768).fill(0).map((_, i) => Math.sin(i * 0.01)));
 
     return {
       retrieve: {

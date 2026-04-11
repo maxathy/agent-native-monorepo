@@ -37,7 +37,7 @@ try {
     CREATE TABLE IF NOT EXISTS semantic_facts (
       content_hash TEXT PRIMARY KEY,
       text TEXT NOT NULL,
-      embedding vector(1536) NOT NULL,
+      embedding vector(768) NOT NULL,
       episode_id UUID NOT NULL,
       session_id UUID NOT NULL,
       created_at TIMESTAMPTZ DEFAULT NOW()
@@ -85,7 +85,7 @@ try {
     // Seed pgvector facts
     if (seeds.pgvector) {
       for (const fact of seeds.pgvector) {
-        const embedding = new Array(1536).fill(0).map((_, i) => Math.sin(i * 0.01));
+        const embedding = new Array(768).fill(0).map((_, i) => Math.sin(i * 0.01));
         const embeddingStr = `[${embedding.join(',')}]`;
 
         await pool.query(

@@ -3,7 +3,7 @@ import type { Neo4jReader } from './neo4j/neo4j.reader.js';
 import type { PgvectorReader } from './pgvector/pgvector.reader.js';
 
 export const RetrievalQuerySchema = z.object({
-  queryEmbedding: z.array(z.number()).length(1536),
+  queryEmbedding: z.array(z.number()).length(768),
   seedEntityIds: z.array(z.string()),
   topK: z.number().int().positive().default(10),
   hopDepth: z.number().int().min(1).max(3).default(2),
