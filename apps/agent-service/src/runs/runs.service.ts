@@ -2,19 +2,6 @@ import { Injectable } from '@nestjs/common';
 import type { Response } from 'express';
 import type { RunResponse, StreamEvent } from '@repo/agent-contracts';
 import { createLogger } from '@repo/telemetry';
-import {
-  type EpisodicRepository,
-  DrizzleEpisodicRepository,
-  type Neo4jWriter,
-  CypherNeo4jWriter,
-  type PgvectorWriter,
-  PgPgvectorWriter,
-  type PgvectorReader,
-  PgPgvectorReader,
-  type Neo4jReader,
-  CypherNeo4jReader,
-  HybridRetrievalFacade,
-} from '@repo/memory-core';
 import { ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { buildAgentGraph, type GraphDeps } from '../agent/graph/graph.js';
@@ -39,7 +26,7 @@ export class RunsService {
 
   private createGeminiDeps(): GraphDeps {
     const llm = new ChatGoogleGenerativeAI({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       apiKey: process.env['GOOGLE_API_KEY'],
     });
 
@@ -100,12 +87,12 @@ export class RunsService {
           findBySession: async () => [],
         },
         neo4jWriter: {
-          mergeEntity: async () => {},
-          mergeRelationship: async () => {},
+          mergeEntity: async () => { },
+          mergeRelationship: async () => { },
         },
         pgvectorWriter: {
-          upsertFact: async () => {},
-          ensureTable: async () => {},
+          upsertFact: async () => { },
+          ensureTable: async () => { },
         },
         extractEntities: async (context: string) => {
           const response = await callLlm(
@@ -169,12 +156,12 @@ export class RunsService {
           findBySession: async () => [],
         },
         neo4jWriter: {
-          mergeEntity: async () => {},
-          mergeRelationship: async () => {},
+          mergeEntity: async () => { },
+          mergeRelationship: async () => { },
         },
         pgvectorWriter: {
-          upsertFact: async () => {},
-          ensureTable: async () => {},
+          upsertFact: async () => { },
+          ensureTable: async () => { },
         },
         extractEntities: async () => ({
           entities: [
