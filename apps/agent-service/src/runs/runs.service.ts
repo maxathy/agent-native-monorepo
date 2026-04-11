@@ -87,12 +87,12 @@ export class RunsService {
           findBySession: async () => [],
         },
         neo4jWriter: {
-          mergeEntity: async () => { },
-          mergeRelationship: async () => { },
+          mergeEntity: async () => {},
+          mergeRelationship: async () => {},
         },
         pgvectorWriter: {
-          upsertFact: async () => { },
-          ensureTable: async () => { },
+          upsertFact: async () => {},
+          ensureTable: async () => {},
         },
         extractEntities: async (context: string) => {
           const response = await callLlm(
@@ -156,12 +156,12 @@ export class RunsService {
           findBySession: async () => [],
         },
         neo4jWriter: {
-          mergeEntity: async () => { },
-          mergeRelationship: async () => { },
+          mergeEntity: async () => {},
+          mergeRelationship: async () => {},
         },
         pgvectorWriter: {
-          upsertFact: async () => { },
-          ensureTable: async () => { },
+          upsertFact: async () => {},
+          ensureTable: async () => {},
         },
         extractEntities: async () => ({
           entities: [
