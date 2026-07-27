@@ -31,24 +31,31 @@ jobs:
       # that never changed, which is how 20 of them accumulated here unseen.
       #
       # This also guards the scoped `vitest/vite` and `vite-node/vite`
-      # resolutions in package.json. Yarn's parent/child resolutions only bind
-      # when the child is a direct dependency of the parent, and when they stop
-      # matching they are ignored silently: install still exits 0. Without this
-      # job, a dropped pin looks exactly like a passing build.
+      # resolutions plus the ranged `brace-expansion@<range>` and
+      # `js-yaml@<range>` ones in package.json. Yarn's parent/child and ranged
+      # resolutions only bind while the descriptor still matches, and when they
+      # stop matching they are ignored silently: install still exits 0. Without
+      # this job, a dropped pin looks exactly like a passing build.
       #
-      # The three ignores are all GHSA-q7rr-3cgh-j5r3, the Prometheus exporter
-      # crash reported against @opentelemetry/sdk-node (1120252),
-      # auto-instrumentations-node (1120251) and exporter-prometheus (1120253).
-      # The exporter is never instantiated in this repo, it is only bundled
-      # inside sdk-node, so there is no endpoint to crash. Fixing it means
-      # 0.57 -> 0.220, a multi-major migration owed its own PR.
+      # The three GHSA-q7rr-3cgh-j5r3 ignores (1120251/1120252/1120253) are
+      # gone: the OTel migration they were waiting on has landed, sdk-node and
+      # exporter-prometheus are on 0.220, and the advisory no longer fires.
       #
-      # These are advisory IDs, not a package glob: a NEW OpenTelemetry
-      # advisory carries a new ID and will still fail this job. Delete the
-      # ignores once the OTel migration lands.
+      # The one remaining ignore is GHSA-mh99-v99m-4gvg, the brace-expansion
+      # unbounded-expansion OOM. It is the only advisory in this tree with no
+      # patched release: it affects <=5.0.7 across every major, so the 1.x and
+      # 2.x lines have nothing to move to, and 5.0.8 cannot be forced onto them
+      # because v5 renamed the CommonJS entry from a default export to a named
+      # `expand`, so minimatch 3.x's `require(...)(pattern)` would throw at
+      # lint time. The 5.x tree here IS pinned to 5.0.8 and is clean.
+      #
+      # Every remaining path is dev tooling -- eslint 9, @eslint/config-array,
+      # @eslint/eslintrc, eslint-plugin-import, glob, and test-exclude -- so
+      # nothing reaches a deployed artifact, and the expansion patterns are our
+      # own lint and coverage globs, not untrusted input. Upgrading eslint does
+      # not clear it; this waits on upstream dropping minimatch ^3.
+      #
+      # This is an advisory ID, not a package glob: a NEW brace-expansion
+      # advisory carries a new ID and will still fail this job.
       - name: Audit for high/critical vulnerabilities
-        run: |
-          yarn npm audit --all --recursive --severity high \
-            --ignore 1120251 \
-            --ignore 1120252 \
-            --ignore 1120253
+        run: yarn npm audit --all --recursive --severity high --ignore 1124334
