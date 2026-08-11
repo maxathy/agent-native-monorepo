@@ -41,21 +41,19 @@ jobs:
       # gone: the OTel migration they were waiting on has landed, sdk-node and
       # exporter-prometheus are on 0.220, and the advisory no longer fires.
       #
-      # The one remaining ignore is GHSA-mh99-v99m-4gvg, the brace-expansion
-      # unbounded-expansion OOM. It is the only advisory in this tree with no
-      # patched release: it affects <=5.0.7 across every major, so the 1.x and
-      # 2.x lines have nothing to move to, and 5.0.8 cannot be forced onto them
-      # because v5 renamed the CommonJS entry from a default export to a named
-      # `expand`, so minimatch 3.x's `require(...)(pattern)` would throw at
-      # lint time. The 5.x tree here IS pinned to 5.0.8 and is clean.
+      # The last remaining ignore is gone too. GHSA-mh99-v99m-4gvg, the
+      # brace-expansion unbounded-expansion OOM, was ignored because it had no
+      # patched release on any major and the 1.x and 2.x lines had nothing to
+      # move to. 1.1.17 and 2.1.3 have since shipped, so the resolutions now
+      # clear it by version instead of by exception, and the "waits on upstream
+      # dropping minimatch ^3" note no longer applies.
       #
-      # Every remaining path is dev tooling -- eslint 9, @eslint/config-array,
-      # @eslint/eslintrc, eslint-plugin-import, glob, and test-exclude -- so
-      # nothing reaches a deployed artifact, and the expansion patterns are our
-      # own lint and coverage globs, not untrusted input. Upgrading eslint does
-      # not clear it; this waits on upstream dropping minimatch ^3.
-      #
-      # This is an advisory ID, not a package glob: a NEW brace-expansion
-      # advisory carries a new ID and will still fail this job.
+      # Both ignores were pinned to advisory IDs rather than package globs, and
+      # the comment predicted that a NEW brace-expansion advisory would carry a
+      # new ID and still fail this job. That is exactly what happened:
+      # GHSA-rgw5-rvv9-x895 landed, explicitly bypassing the CVE-2026-14257
+      # mitigation, range >=4.0.0 <5.0.9, against a 5.x tree pinned to 5.0.8.
+      # One patch short. ID-scoped ignores are why it surfaced rather than being
+      # swallowed by a package-name exception. Keep future ignores ID-scoped.
       - name: Audit for high/critical vulnerabilities
-        run: yarn npm audit --all --recursive --severity high --ignore 1124334
+        run: yarn npm audit --all --recursive --severity high
