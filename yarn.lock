@@ -1600,9 +1600,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/testing@npm:^11.1.28":
-  version: 11.1.28
-  resolution: "@nestjs/testing@npm:11.1.28"
+"@nestjs/testing@npm:^11.1.29":
+  version: 11.1.29
+  resolution: "@nestjs/testing@npm:11.1.29"
   dependencies:
     tslib: "npm:2.8.1"
   peerDependencies:
@@ -1615,7 +1615,7 @@ __metadata:
       optional: true
     "@nestjs/platform-express":
       optional: true
-  checksum: 10c0/7d111a40cceb57b492610caa6cf875debe8a010083765f5bc10c3943c4f6ff7c2f15afb55fcbcd4e329f68b9c646f68a6d0caa319ab1b3b31f08a833f30e233a
+  checksum: 10c0/b664c34acb57a51ac292491e51d60d2d7f038e8171033fade3c6788cb8529345f2649da73550bfe371552a02835577640c3082264f3aa544d5cd6c348e4c6075
   languageName: node
   linkType: hard
 
@@ -2871,7 +2871,7 @@ __metadata:
     "@nestjs/common": "npm:^11.1.28"
     "@nestjs/core": "npm:^11.1.28"
     "@nestjs/platform-express": "npm:^11.1.28"
-    "@nestjs/testing": "npm:^11.1.28"
+    "@nestjs/testing": "npm:^11.1.29"
     "@opentelemetry/auto-instrumentations-node": "npm:^0.79.0"
     "@repo/agent-contracts": "workspace:*"
     "@repo/eslint-config": "workspace:*"
@@ -2888,7 +2888,7 @@ __metadata:
     rxjs: "npm:^7.8.0"
     supertest: "npm:^7.0.0"
     ts-jest: "npm:^29.4.12"
-    tsx: "npm:^4.23.11"
+    tsx: "npm:^4.23.12"
     typescript: "npm:^5.7.0"
     vitest: "npm:^4.1.10"
     zod: "npm:^3.24.0"
@@ -2938,7 +2938,7 @@ __metadata:
     eslint: "npm:^9.39.5"
     express: "npm:^5.1.0"
     http-proxy-middleware: "npm:^3.0.7"
-    tsx: "npm:^4.23.11"
+    tsx: "npm:^4.23.12"
     typescript: "npm:^5.7.0"
   languageName: unknown
   linkType: soft
@@ -9885,9 +9885,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsx@npm:^4.23.11":
-  version: 4.23.11
-  resolution: "tsx@npm:4.23.11"
+"tsx@npm:^4.23.12":
+  version: 4.23.12
+  resolution: "tsx@npm:4.23.12"
   dependencies:
     esbuild: "npm:~0.28.0"
     fsevents: "npm:~2.3.3"
@@ -9896,7 +9896,7 @@ __metadata:
       optional: true
   bin:
     tsx: dist/cli.mjs
-  checksum: 10c0/6f72cfea4aec04ab17450b0b6764f85839f2f8b207255a86b3c704e91df5b68d550a93b2975d3916b996f0b651999e7bdbc71ef60abd83563b60f53bcd3bf95a
+  checksum: 10c0/cdd7f03754021fb337c13839f25f5f5edee01ed12e1e176da50cc34bc5c5fc4e7b533aeba89127055be969d4ff292c6accdb6b9d977ed022c524349eca6ff841
   languageName: node
   linkType: hard
 
