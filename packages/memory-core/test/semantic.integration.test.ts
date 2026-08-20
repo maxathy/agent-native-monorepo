@@ -3,13 +3,16 @@ import neo4j, { type Driver } from 'neo4j-driver';
 import pg from 'pg';
 import { CypherNeo4jWriter } from '../src/semantic/neo4j/neo4j.writer.js';
 import { PgPgvectorWriter } from '../src/semantic/pgvector/pgvector.writer.js';
+import { skipUnlessIntegrationEnv } from './integration-env.js';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
 const NEO4J_URI = process.env['NEO4J_URI'];
 const NEO4J_USER = process.env['NEO4J_USER'] ?? 'neo4j';
 const NEO4J_PASSWORD = process.env['NEO4J_PASSWORD'] ?? 'password';
 
-describe.skipIf(!DATABASE_URL || !NEO4J_URI)('Semantic Memory (integration)', () => {
+const SKIP = skipUnlessIntegrationEnv('Semantic Memory (integration)', 'DATABASE_URL', 'NEO4J_URI');
+
+describe.skipIf(SKIP)('Semantic Memory (integration)', () => {
   let neo4jDriver: Driver;
   let pgPool: pg.Pool;
   let neo4jWriter: CypherNeo4jWriter;

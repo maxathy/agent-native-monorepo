@@ -4,10 +4,13 @@ import pg from 'pg';
 import { sql } from 'drizzle-orm';
 import { DrizzleEpisodicRepository } from '../src/episodic/episodic.repo.js';
 import { episodes } from '../src/episodic/schema.js';
+import { skipUnlessIntegrationEnv } from './integration-env.js';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
 
-describe.skipIf(!DATABASE_URL)('DrizzleEpisodicRepository (integration)', () => {
+const SKIP = skipUnlessIntegrationEnv('DrizzleEpisodicRepository (integration)', 'DATABASE_URL');
+
+describe.skipIf(SKIP)('DrizzleEpisodicRepository (integration)', () => {
   let pool: pg.Pool;
   let db: NodePgDatabase;
   let repo: DrizzleEpisodicRepository;

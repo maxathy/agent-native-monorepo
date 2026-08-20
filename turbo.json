@@ -20,7 +20,8 @@
     },
     "test:integration": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL", "NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD"]
     },
     "test:e2e": {
       "dependsOn": ["build"],
@@ -28,7 +29,8 @@
     },
     "test:eval": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      "env": ["DATABASE_URL", "NEO4J_URI", "NEO4J_USER", "NEO4J_PASSWORD"]
     },
     "clean": {
       "cache": false
