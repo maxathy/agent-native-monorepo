@@ -6,13 +6,20 @@ import { CypherNeo4jReader } from '../src/semantic/neo4j/neo4j.reader.js';
 import { PgPgvectorWriter } from '../src/semantic/pgvector/pgvector.writer.js';
 import { PgPgvectorReader } from '../src/semantic/pgvector/pgvector.reader.js';
 import { HybridRetrievalFacade } from '../src/semantic/retrieval-facade.js';
+import { skipUnlessIntegrationEnv } from './integration-env.js';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
 const NEO4J_URI = process.env['NEO4J_URI'];
 const NEO4J_USER = process.env['NEO4J_USER'] ?? 'neo4j';
 const NEO4J_PASSWORD = process.env['NEO4J_PASSWORD'] ?? 'password';
 
-describe.skipIf(!DATABASE_URL || !NEO4J_URI)('HybridRetrievalFacade (integration)', () => {
+const SKIP = skipUnlessIntegrationEnv(
+  'HybridRetrievalFacade (integration)',
+  'DATABASE_URL',
+  'NEO4J_URI',
+);
+
+describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
   let neo4jDriver: Driver;
   let pgPool: pg.Pool;
   let facade: HybridRetrievalFacade;
