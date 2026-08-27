@@ -1475,18 +1475,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@langchain/langgraph-checkpoint@npm:^0.1.1":
-  version: 0.1.1
-  resolution: "@langchain/langgraph-checkpoint@npm:0.1.1"
+"@langchain/langgraph-checkpoint@npm:^0.1.3":
+  version: 0.1.3
+  resolution: "@langchain/langgraph-checkpoint@npm:0.1.3"
   dependencies:
     uuid: "npm:^10.0.0"
   peerDependencies:
     "@langchain/core": ">=0.2.31 <0.4.0 || ^1.0.0-alpha"
-  checksum: 10c0/31ce2c2998321e82f96f7e6743c82a2588573b4dbde5b70f692f78c506874ef0a6444c8399d8ce83da9589712045b19324d54bada518c900013844123f6f8d43
+  checksum: 10c0/7a5adc131b015cb7c82894785655fbf7e2f034f22be4cc4b6aed1c02b9ebbfac88caee2cd1454f4a7067365cce583bea42f9566c7d132dbeb1eee787daf468b6
   languageName: node
   linkType: hard
 
-"@langchain/langgraph-sdk@npm:~0.1.0":
+"@langchain/langgraph-sdk@npm:~0.1.10":
   version: 0.1.10
   resolution: "@langchain/langgraph-sdk@npm:0.1.10"
   dependencies:
@@ -1509,12 +1509,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@langchain/langgraph@npm:^0.4.9":
-  version: 0.4.9
-  resolution: "@langchain/langgraph@npm:0.4.9"
+"@langchain/langgraph@npm:^0.4.10":
+  version: 0.4.10
+  resolution: "@langchain/langgraph@npm:0.4.10"
   dependencies:
-    "@langchain/langgraph-checkpoint": "npm:^0.1.1"
-    "@langchain/langgraph-sdk": "npm:~0.1.0"
+    "@langchain/langgraph-checkpoint": "npm:^0.1.3"
+    "@langchain/langgraph-sdk": "npm:~0.1.10"
     uuid: "npm:^10.0.0"
     zod: "npm:^3.25.32"
   peerDependencies:
@@ -1523,7 +1523,7 @@ __metadata:
   peerDependenciesMeta:
     zod-to-json-schema:
       optional: true
-  checksum: 10c0/abb6d34d11192b7268ee301f5865de5d19105470f84d58f6b4fbf43934add0263dd054e6ca87e2e57b3d624694afe0f84d0d976ddd4d6c129bef839adf60d3a6
+  checksum: 10c0/3faf1d4d544102a7e9152783f86a08c5db3f6c68cf599e76bcaf70735792b8bab583ec09b852427fdfcbc19c092da79a7de92ef8cb0fe9cc58cf925afd3d97bb
   languageName: node
   linkType: hard
 
@@ -1534,9 +1534,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nestjs/common@npm:^11.1.29":
-  version: 11.1.29
-  resolution: "@nestjs/common@npm:11.1.29"
+"@nestjs/common@npm:^11.2.1":
+  version: 11.2.1
+  resolution: "@nestjs/common@npm:11.2.1"
   dependencies:
     file-type: "npm:21.3.4"
     iterare: "npm:1.2.1"
@@ -1553,13 +1553,13 @@ __metadata:
       optional: true
     class-validator:
       optional: true
-  checksum: 10c0/5f1c65c6b07a2e9f2380cf322431a62baf761c0279eb4dee8fdee90e84347235ebde9264f8e635a2db48dac3855b31e9c3aac6af6ae50290d467f71b42326c86
+  checksum: 10c0/3d3d45e420468ab80247a05db7607a0558f4d4d97c3a41d8b97630d3ad3b99f9e4bc34ec24955500de62e8d36da2c4ce22401be445db72fe48c754f4b87c80ba
   languageName: node
   linkType: hard
 
-"@nestjs/core@npm:^11.1.29":
-  version: 11.1.29
-  resolution: "@nestjs/core@npm:11.1.29"
+"@nestjs/core@npm:^11.2.1":
+  version: 11.2.1
+  resolution: "@nestjs/core@npm:11.2.1"
   dependencies:
     fast-safe-stringify: "npm:2.1.1"
     iterare: "npm:1.2.1"
@@ -1580,13 +1580,13 @@ __metadata:
       optional: true
     "@nestjs/websockets":
       optional: true
-  checksum: 10c0/66a787a98f21ae5ec68442892c449cd61d341c003cfc67f863f30aff5173974b3dac8d6cba2344559e1259ff0533fb3b53a73fc3b0c169f5ae3a1bdc23fba1cf
+  checksum: 10c0/f38952f931c71347b6658f2718639451567291c22ebea25a4b232a244a5e36b2457dc5bd37eab277dd98df1c0e120d9e9d21589c94294e666532687d85472e57
   languageName: node
   linkType: hard
 
-"@nestjs/platform-express@npm:^11.1.29":
-  version: 11.1.29
-  resolution: "@nestjs/platform-express@npm:11.1.29"
+"@nestjs/platform-express@npm:^11.2.1":
+  version: 11.2.1
+  resolution: "@nestjs/platform-express@npm:11.2.1"
   dependencies:
     cors: "npm:2.8.6"
     express: "npm:5.2.1"
@@ -1596,7 +1596,7 @@ __metadata:
   peerDependencies:
     "@nestjs/common": ^11.0.0
     "@nestjs/core": ^11.0.0
-  checksum: 10c0/9cd265f7dcce27f2099928b72842b5b8e63457f38bfa02f3967f3bc68819922c97696f79c228c245aae6ac3adffaff52fec5868985589c4af7c358cc881a104e
+  checksum: 10c0/a9505891041d6531c9082a4ba656d3df5798b352a70f1ff9932d78b883312381cc8b8b6fedb40b838beea7498ea4eeb8720bc5e55df5de247f55902a746ccba0
   languageName: node
   linkType: hard
 
@@ -2867,10 +2867,10 @@ __metadata:
   dependencies:
     "@langchain/core": "npm:^0.3.0"
     "@langchain/google-genai": "npm:^0.2.0"
-    "@langchain/langgraph": "npm:^0.4.9"
-    "@nestjs/common": "npm:^11.1.29"
-    "@nestjs/core": "npm:^11.1.29"
-    "@nestjs/platform-express": "npm:^11.1.29"
+    "@langchain/langgraph": "npm:^0.4.10"
+    "@nestjs/common": "npm:^11.2.1"
+    "@nestjs/core": "npm:^11.2.1"
+    "@nestjs/platform-express": "npm:^11.2.1"
     "@nestjs/testing": "npm:^11.2.1"
     "@opentelemetry/auto-instrumentations-node": "npm:^0.79.0"
     "@repo/agent-contracts": "workspace:*"
