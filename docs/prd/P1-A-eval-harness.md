@@ -4,7 +4,7 @@ title: packages/eval-harness — evaluation as a first-class package
 tier: 1
 status: draft
 size: L
-depends_on: [P0-A]
+depends_on: [P0-A, P2-A]
 blocks: [P1-B, P1-C, P1-D, P1-E, P1-F, P2-B]
 issue: null
 superseded_by: null
@@ -193,6 +193,11 @@ block becomes a list of named code graders.
 
 ## Risks and open questions
 
+- **This PRD cannot complete before P2-A.** Its fourth acceptance criterion requires a
+  grader asserting that `reflect` wrote an episodic row and MERGEd an entity. Those writers
+  are no-op closures in `runs.service.ts` until P2-A wires the real adapters, so the
+  criterion would be asserting against a stub. The types, runner, reporters and trajectory
+  grading can all be built first; the outcome graders are what block.
 - **Cost.** Every trial is a live model call, and n trials multiply it. Keep the initial
   suite small (10–20 tasks) and accept that the full suite is a nightly artifact until
   P1-B makes replay free.

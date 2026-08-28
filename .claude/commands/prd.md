@@ -10,10 +10,17 @@ Work on PRD `$ARGUMENTS`.
 
 - **No id given** — read the "Where things stand" section of `docs/prd/README.md`, say what
   you think the next PRD should be and why, and stop. Do not start work.
-- **`docs/prd/<id>-*.md` exists** — Implement mode.
 - **No file, but the id has a row in the index table** — Draft mode.
 - **Neither** — the id is not in the backlog. Say so and ask whether to add it, rather than
   inventing a PRD for an id nobody has agreed to.
+- **The file exists** — route on its `status`, not on the fact that it exists:
+  - `accepted` or `in-progress` — Implement mode.
+  - `draft` — **the spec has not been signed off.** Do not implement it. Read it, tell me
+    what you would change, and ask me to accept it. If I tell you to proceed anyway, say in
+    your summary that you implemented a draft, so the record shows the review was skipped.
+  - `shipped` — say so and ask what is intended: a follow-up belongs in a new PRD, and a
+    correction to a shipped record usually means superseding it.
+  - `superseded` — point at `superseded_by` and stop.
 
 ---
 

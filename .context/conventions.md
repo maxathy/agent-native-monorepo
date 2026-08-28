@@ -66,7 +66,9 @@ Each tier has one command. All of them run in CI except `test:eval`, which is ni
   that `depends_on` and `blocks` are mutual, that the index agrees with the files, and that
   a `shipped` PRD's unmet criteria each name the PRD that now owns them. It runs on every
   pull request.
-- **A capability claim in `README.md` or `.context/` must be true of the code at HEAD.**
+- **A capability claim in `README.md`, `.context/`, or `.agents/` must be true of the code
+  at HEAD.** `.agents/` counts: the testcontainers convention this repo never followed lived
+  in three of those files, and one of them was the prompt that reviews pull requests.
   If it is aspirational, it belongs in `docs/prd/` or in the status matrix, not in the
   present tense.
 - **`docs/STATUS.md` is that status matrix**, one row per documented capability with what
