@@ -207,6 +207,14 @@ block becomes a list of named code graders.
   keep the package standalone with pluggable reporters. Standalone first — it keeps the
   package honest about what it computes itself — with a LangSmith reporter as a later
   addition. Worth revisiting once P1-D needs baseline storage.
+- **Vitest in `apps/agent-service` collects `dist/` as well as `src/`.** `test:unit` runs
+  every unit test twice — once from `src/agent/graph/edges.test.ts` and again from the
+  compiled `dist/agent/graph/edges.test.js`, because `tsc --build` emits test files and
+  Vitest 4's default excludes no longer cover `dist`. Found while implementing P0-A and
+  left alone: it wastes time and could report a stale compiled copy as a pass, but nothing
+  is currently hidden by it, and this PRD owns the runner configuration for that package
+  (see P0-A's non-goals). Fix it with an `exclude` when Vitest becomes the evaluation
+  runner, or by keeping test files out of `rootDir`.
 
 ## References
 

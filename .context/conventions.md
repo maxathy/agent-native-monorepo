@@ -34,12 +34,28 @@
 
 ## Testing
 
-- **Unit (Vitest):** `packages/` — pure functions, no I/O, no containers.
-- **Service (Jest + @nestjs/testing):** `apps/agent-service` — module isolation,
-  mocked graph execution.
-- **Integration (Vitest + testcontainers):** Real Postgres/Neo4j containers.
-  No mocking of databases in integration tests.
-- **E2E (Playwright):** Full stack via `docker-compose.yml`.
+Each tier has one command. All of them run in CI except `test:eval`, which is nightly.
+
+| Tier        | Runner                 | Command                       | Scope                                           |
+| ----------- | ---------------------- | ----------------------------- | ----------------------------------------------- |
+| Unit        | Vitest                 | `yarn turbo test:unit`        | `packages/` and pure logic in apps — no I/O     |
+| Service     | Jest + @nestjs/testing | `yarn turbo test:service`     | `apps/agent-service` over HTTP, stub graph deps |
+| Integration | Vitest                 | `yarn turbo test:integration` | Real Postgres/Neo4j — never mock a database     |
+| E2E         | Playwright             | `yarn turbo test:e2e`         | Browser against the full `docker compose` stack |
+
+- **Service tests need `--experimental-vm-modules`**, which the `test:service` script
+  already carries. Jest's ESM support requires it, and without it every import in a spec
+  fails with "Cannot use import statement outside a module". For the same reason the Jest
+  config is `jest.config.mjs` and not `.ts` — a TypeScript config makes Jest require
+  `ts-node`, which is not a dependency.
+- **Service tests must not depend on ambient environment.** `RunsService` picks live Gemini
+  dependencies over stubs whenever `GOOGLE_API_KEY` is set, so a spec that does not clear
+  it passes or fails according to the developer's shell.
+- **E2E runs against the compose stack, not the dev server.** Bring it up with
+  `docker compose --profile full up -d --build --wait`, then run the suite with
+  `E2E_BASE_URL=http://localhost:8080`. Without that variable Playwright boots the Vite dev
+  server instead, which serves the UI with no backend behind it — assertions pass without
+  proving anything.
 
 ## Documentation
 
@@ -56,7 +72,15 @@
 ## Error Handling
 
 - Validate at system boundaries with Zod. Trust internal types.
-- Use NestJS exception filters for HTTP error envelopes.
+- Use NestJS exception filters for HTTP error envelopes. A filter must preserve the payload
+  a 4xx `HttpException` carries — `ZodValidationPipe` attaches `error: 'Validation Error'`
+  and the Zod `issues`, and rebuilding the body from scratch throws away the only part a
+  client can act on. 5xx payloads are never forwarded.
+- **Inject Nest dependencies by explicit token: `@Inject(Foo) private readonly foo: Foo`.**
+  `yarn dev` runs through tsx, and esbuild does not implement `emitDecoratorMetadata`, so
+  Nest has no `design:paramtypes` to resolve an implicit constructor parameter and injects
+  `undefined`. It only breaks on the dev path — `tsc` emits the metadata — so the compiled
+  build and the service tests will not catch it.
 - Graph nodes return `Partial<AgentState>` — never throw from within a node.
 
 ## Dependencies

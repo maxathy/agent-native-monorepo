@@ -2,7 +2,7 @@
 id: P0-A
 title: Make the service run, and make CI unable to hide it
 tier: 0
-status: draft
+status: shipped
 size: S
 depends_on: []
 blocks: [P1-A, P2-A, P5-C]
@@ -81,6 +81,8 @@ they appear in SSE `StreamEvent.node` payloads, in OTel span names (`agent.node.
 the README topology diagram, and in `.context/architecture.md`. The state field is internal
 to `AgentState`. Rename `plan` → `currentPlan` in `graph/state.ts`, `graph/graph.ts:24`,
 `nodes/plan.node.ts`, and any reader in `nodes/act.node.ts` and `nodes/egress.node.ts`.
+(On implementation: `egress.node.ts` does not read the field — `act.node.ts` is the only
+reader. `packages/memory-core` does declare it, and is the file this list was missing.)
 
 **Gateway.** Import `fixRequestBody` from `http-proxy-middleware` and attach it to the
 existing `on.proxyReq` handler alongside the correlation-ID forwarding, so both behaviors
@@ -109,32 +111,81 @@ the Playwright suite does.
 asserting it returns a compiled graph. This is the specific assertion whose absence allowed
 defect 1 to ship; it runs in `test:unit` and costs nothing.
 
+### What implementation added to this design
+
+The two defects above were real and fixed as written. Four more sat behind them, each
+found only once the one in front of it was cleared. They are recorded here because the
+next reader will otherwise assume this PRD's Problem section was the whole story.
+
+- The gateway needed a second fix. With the hang cleared, `/runs` reached the agent service
+  as `/`: an Express mount path is stripped from `req.url` before the middleware sees it,
+  so `pathRewrite: { '^/runs': '/runs' }` matched nothing and was a no-op that looked
+  deliberate. Selection moved to `pathFilter`.
+- The Jest spec could not start: `jest.config.ts` requires `ts-node`, which is not a
+  dependency, and ESM needs `--experimental-vm-modules`. The claim that `"test": "jest"`
+  ran it was true only in the sense that the script existed.
+- `GlobalHttpExceptionFilter` rebuilt every response body from scratch, discarding the
+  `error: 'Validation Error'` and `issues` that `ZodValidationPipe` had attached — so the
+  spec's 400 assertion failed against the shape the pipe was written to produce.
+- `yarn dev` was broken independently of everything else: it runs through tsx, esbuild does
+  not implement `emitDecoratorMetadata`, and Nest injected `undefined` into the one
+  constructor in the service. The compiled path was unaffected, which is why the e2e spec
+  passed while the documented quickstart did not.
+
 ## Acceptance criteria
 
-- [ ] `buildAgentGraph` returns a compiled graph; a unit test asserts this and fails if the
+- [x] `buildAgentGraph` returns a compiled graph; a unit test asserts this and fails if the
       channel/node collision is reintroduced.
-- [ ] `POST /runs` against `apps/agent-service` returns 200 with a body satisfying
+- [x] `POST /runs` against `apps/agent-service` returns 200 with a body satisfying
       `RunResponseSchema`.
-- [ ] `POST /runs` against the gateway on port 3001 returns 200 and does not hang; the
+- [x] `POST /runs` against the gateway on port 3001 returns 200 and does not hang; the
       upstream receives the forwarded body and the `x-correlation-id` header.
-- [ ] `POST /runs/stream` emits `text/event-stream` and at least one `data:` frame.
-- [ ] `yarn turbo test:service` runs `apps/agent-service/test/runs.e2e-spec.ts` and passes.
-- [ ] `ci.yml` invokes `test:service`; a separate workflow invokes `test:e2e` against the
+- [x] `POST /runs/stream` emits `text/event-stream` and at least one `data:` frame.
+- [x] `yarn turbo test:service` runs `apps/agent-service/test/runs.e2e-spec.ts` and passes.
+- [x] `ci.yml` invokes `test:service`; a separate workflow invokes `test:e2e` against the
       full compose stack.
-- [ ] The README quickstart commands, executed verbatim against a fresh clone, succeed.
+- [x] The README quickstart commands, executed verbatim against a fresh clone, succeed.
+      Verified against a clone with no `.env`, which is the state the command block assumes.
+      Following the Prerequisites section and supplying a `GOOGLE_API_KEY` still returns 500
+      on a retired embedding model — see "Risks and open questions", handed to P2-A.
 
 ## Risks and open questions
 
-- Renaming the `plan` channel touches the `AgentState` type surface. It is contained to
-  `apps/agent-service`, but `packages/agent-contracts` should be checked for leakage of the
-  field name into the response contract before the rename lands.
-- The Playwright suite currently boots only the Vite dev server
-  (`playwright.config.ts`), so its one behavioral assertion passes for the wrong reason.
-  Pointing it at the compose stack may surface real failures. That is the intended outcome;
-  budget for fixing what it finds.
-- `docker compose --profile full` in CI is slower than the current service-container
-  approach. If it proves too slow for every pull request, move it to a nightly schedule and
-  keep `test:service` on the pull-request path.
+Resolved during implementation:
+
+- **The `plan` rename did not leak into `packages/agent-contracts`.** The only `plan` there
+  is `node: 'plan'` in a `StreamEvent` fixture, which is the node name and does not move.
+  The field did live in `packages/memory-core` — `WorkingMemorySchema`, which
+  `AgentStateSchema` extends — so both were renamed together. Renaming only the local
+  extend would have left a ghost `plan` on `AgentState` that still compiled and always read
+  `undefined`.
+- **Pointing Playwright at the compose stack surfaced no browser failures**, because the
+  stack could not start at all. Four defects stood between `docker compose --profile full
+up` and a running console: the runner images omitted `packages/`, which every workspace
+  symlink points into; an empty `OTEL_EXPORTER_OTLP_ENDPOINT` built the invalid exporter
+  URL `/v1/traces` and killed bootstrap; the fatal was logged as `"error":{}` because pino
+  has no error serializer by default; and the console healthcheck polled `localhost`, which
+  is `::1`, against an nginx bound to IPv4 only. All five assertions pass once the stack
+  runs.
+- **`docker compose --profile full` cost.** The job builds three images and waits on six
+  healthchecks; locally that is a few minutes from cold. It is on the pull-request path
+  for now. If it becomes the slowest gate, move it to a schedule and keep `test:service` on
+  every pull request.
+
+Open, and handed on:
+
+- **The Gemini dependency set is still broken, and it is P2-A's.** With `GOOGLE_API_KEY`
+  set — which the README's prerequisites tell every reader to do — `POST /runs` returns
+  500: `text-embedding-004` no longer exists for `embedContent` on `v1beta`. The
+  replacement is not a one-line change, because 768 dimensions are hardcoded in
+  `pgvector.writer.ts` (both the Zod validator and the `vector(768)` DDL),
+  `retrieval-facade.ts`, `scripts/seed-eval-fixtures.mjs`, and documented in `README.md`
+  and `.context/architecture.md`. Picking a replacement model is a dimension decision, so
+  it belongs with wiring the real memory adapters. Everything in this PRD was verified
+  against the stub dependency set, which is what CI runs.
+- **`POST /runs/stream` answers 201, not 200**, because the handler has no `@HttpCode(200)`
+  while `POST /runs` does. No contract or document states either, so nothing is violated;
+  it is worth settling when `StreamEvent` is next touched.
 
 ## References
 

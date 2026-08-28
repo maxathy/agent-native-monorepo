@@ -46,8 +46,21 @@ workflow for you; the steps below are the tool-agnostic version.
 4. Wire the node into `apps/agent-service/src/agent/graph/graph.ts`:
    - Add the node to the `StateGraph`.
    - Define edges to/from the new node.
+   - **The node name must not match any channel in `AgentStateAnnotation`.** LangGraph
+     rejects the collision from inside `addNode` — "`<name>` is already being used as a
+     state attribute (a.k.a. a channel), cannot also be used as a node name" — and the
+     graph is built per request, so this surfaces as a 500 on every call rather than a
+     failure at startup. If a node needs a state field of the same name, rename the
+     channel: node names are public vocabulary (SSE `StreamEvent.node`, the
+     `agent.node.<name>` span, the console's colour map, the topology diagrams) and the
+     channel is not. State fields live in `graph/state.ts` and in `WorkingMemorySchema` in
+     `packages/memory-core`; rename both, or the type keeps a field that always reads
+     `undefined`.
 5. Add a unit test in `apps/agent-service/src/agent/nodes/<name>.node.test.ts`.
-6. Run `yarn turbo typecheck && yarn turbo lint` to verify.
+6. Run `yarn turbo typecheck && yarn turbo lint` — then `yarn turbo test:unit` and
+   `yarn turbo test:service`. The first two cannot catch a graph that fails to build; only
+   something that calls `buildAgentGraph` can, which is what
+   `src/agent/graph/graph.test.ts` does.
 
 ## Add a New Package
 
