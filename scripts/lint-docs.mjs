@@ -9,6 +9,7 @@
  * the index that no longer matches the file.
  */
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -171,6 +172,45 @@ if (existsSync(adrIndexPath)) {
   }
 } else {
   fail('docs/adr/README.md', 'missing');
+}
+
+// --- docs/STATUS.md evidence references -----------------------------------
+// Every row cites a `file.ts:NN`. Those citations are the whole value of the matrix, and
+// they rot silently when a file is renamed or shrinks. Resolve each one and range-check
+// the line, so a stale citation fails the build instead of misleading a reader.
+const statusPath = join(root, 'docs', 'STATUS.md');
+if (existsSync(statusPath)) {
+  const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf-8' })
+    .split('\n')
+    .filter(Boolean);
+  const seen = new Set();
+  const refs = readFileSync(statusPath, 'utf-8').matchAll(
+    /`([A-Za-z0-9._/-]+\.(?:ts|tsx|mjs|js|yml|yaml|json)):(\d+)(?:-(\d+))?`/g,
+  );
+  for (const [, relPath, startStr, endStr] of refs) {
+    const key = `${relPath}:${startStr}-${endStr ?? ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const matches = tracked.filter((f) => f === relPath || f.endsWith(`/${relPath}`));
+    if (matches.length === 0) {
+      fail('docs/STATUS.md', `cites \`${relPath}\`, which no tracked file matches`);
+      continue;
+    }
+    if (matches.length > 1) {
+      fail(
+        'docs/STATUS.md',
+        `cites \`${relPath}\`, which is ambiguous (${matches.length} matches)`,
+      );
+      continue;
+    }
+    const lines = readFileSync(join(root, matches[0]), 'utf-8').split('\n').length;
+    const last = Number(endStr ?? startStr);
+    if (last > lines)
+      fail(
+        'docs/STATUS.md',
+        `cites \`${relPath}:${startStr}${endStr ? `-${endStr}` : ''}\` but ${matches[0]} has ${lines} lines`,
+      );
+  }
 }
 
 // --- Report ---------------------------------------------------------------
