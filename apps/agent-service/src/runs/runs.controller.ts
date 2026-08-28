@@ -1,11 +1,16 @@
-import { Controller, Post, Body, Headers, Res, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, Headers, Res, HttpCode, Inject } from '@nestjs/common';
 import type { Response } from 'express';
 import type { RunResponse } from '@repo/agent-contracts';
 import { RunsService } from './runs.service.js';
 
 @Controller('runs')
 export class RunsController {
-  constructor(private readonly runsService: RunsService) {}
+  // The token is explicit because `yarn dev` runs through tsx, and esbuild does
+  // not implement emitDecoratorMetadata. Without it Nest has no design:paramtypes
+  // to resolve, injects undefined, and every request fails with "Cannot read
+  // properties of undefined (reading 'execute')" — on the compiled path only,
+  // where tsc does emit the metadata, so it works. This is the sole DI site.
+  constructor(@Inject(RunsService) private readonly runsService: RunsService) {}
 
   @Post()
   @HttpCode(200)
