@@ -18,6 +18,10 @@
     "test:unit": {
       "dependsOn": ["build"]
     },
+    "test:service": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
     "test:integration": {
       "dependsOn": ["build"],
       "cache": false,

@@ -26,4 +26,5 @@ jobs:
       - run: yarn turbo lint
       - run: yarn turbo typecheck
       - run: yarn turbo test:unit
+      - run: yarn turbo test:service
       - run: yarn turbo build
