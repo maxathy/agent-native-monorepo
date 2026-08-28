@@ -36,7 +36,9 @@ Write the PRD. Do not implement it.
 4. Write `docs/prd/<id>-<slug>.md` and update its row in the index. `size` and `status` must
    match the frontmatter in both places.
 5. Run `yarn lint:docs`.
-6. Stop and hand it to me for review. Leave `status: draft`.
+6. **Commit the draft**, then stop and hand it to me for review. Leave `status: draft`.
+   An uncommitted draft cannot be diffed, cannot be reviewed as a change, and is one stray
+   `git checkout` from gone.
 
 Tell me explicitly what you were unsure about — a PRD I approve without knowing where it was
 guessing is worse than one that flags its own soft spots.

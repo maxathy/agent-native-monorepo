@@ -50,11 +50,28 @@ is retired. The replacement changes the embedding dimension, and 768 is hardcode
 makes it P2-A's. The README no longer instructs anyone to set the key, and it is row 16 of
 `docs/STATUS.md`.
 
-**Suggested next step:** P1-A or P2-A, and the choice is about what the repository should
-prove next. P2-A retires eight `stubbed` rows and turns the architecture from a design into
-a running system; P1-A is the stated thesis and the harder thing to fake. P2-A is the more
-honest order — evaluating a graph whose memory tiers are no-ops measures the stub — but
-P1-A is the one a reader came for. Neither is small.
+**[P2-A](P2-A-wire-memory-core.md) is drafted and waiting on review.** It is the work that
+retires eight `stubbed` rows: the composition root that constructs the adapters, the
+migrations that nothing currently owns, the checkpointer, the retry policy, the embedding
+dimension as one constant, and a fusion key that actually fuses. Drafting it turned up
+three things the audit had not: `:Fact` and `:Session` are documented node labels that
+`neo4j.writer.ts` never writes, no node appends the assistant turn to `state.messages` — so
+episodic memory would record half a conversation — and `POST /runs` returns 500 rather than
+400 when `x-correlation-id` is absent, which the README quickstart misses only because the
+gateway mints one. All three are folded into P2-A's scope.
+
+**P2-A does not depend on P5-C.** The spine below used to say it did. `retryPolicy` and
+`compile({ checkpointer })` both exist at the pinned `@langchain/langgraph@0.4.10`, and
+`@langchain/langgraph-checkpoint-postgres@0.1.3` is peer-compatible with
+`@langchain/core@0.3.80`, so the LangGraph 1.x upgrade is an independent piece of work that
+gets cheaper after P2-A rather than a prerequisite for it.
+
+**Suggested next step:** accept P2-A, or take P1-A. The choice is about what the repository
+should prove next. P2-A turns the architecture from a design into a running system; P1-A is
+the stated thesis and the harder thing to fake. P2-A is the more honest order — evaluating a
+graph whose memory tiers are no-ops measures the stub, which is why P1-A's frontmatter
+already lists P2-A in `depends_on` — but P1-A is the one a reader came for. Neither is
+small.
 
 **One decision is pending and blocks Tier 3:** `.agents/reviewer.md` rule 10 forbids
 medical and clinical terminology, which rules out the payer-domain vertical. It needs an
@@ -114,11 +131,12 @@ The repository's stated thesis. Today `.github/workflows/agent-eval.yml` runs
 The three-tier memory model exists in `packages/memory-core` and is never instantiated by
 `apps/agent-service`. The graph compiles without a checkpointer.
 
-| ID   | Title                                                            | Size | Status |
-| ---- | ---------------------------------------------------------------- | ---- | ------ |
-| P2-A | Wire memory-core into the service; add checkpointing and retry   | L    | draft  |
-| P2-B | Hybrid retrieval evaluation and the graph/vector/hybrid ablation | M    | draft  |
-| P2-C | OpenTelemetry GenAI semantics, including evaluation events       | M    | draft  |
+| ID                               | Title                                                            | Size | Status |
+| -------------------------------- | ---------------------------------------------------------------- | ---- | ------ |
+| [P2-A](P2-A-wire-memory-core.md) | Wire memory-core into the service; add checkpointing and retry   | L    | draft  |
+| P2-B                             | Hybrid retrieval evaluation and the graph/vector/hybrid ablation | M    | draft  |
+| P2-C                             | OpenTelemetry GenAI semantics, including evaluation events       | M    | draft  |
+| P2-D                             | Make hybrid retrieval fuse over one candidate universe           | M    | draft  |
 
 ## Tier 3 — Regulated-domain credibility
 
@@ -153,13 +171,20 @@ provider actually operates under. Uses synthetic data only.
 The dependency spine, not a schedule:
 
 ```
-P0-A ──▶ P5-C ──▶ P2-A ──┬──▶ P2-B
-                          ├──▶ P3-B
-                          └──▶ P4-C
-P0-A ──▶ P1-A ──▶ P1-B ──▶ P1-C ──┬──▶ P1-D
-                                   ├──▶ P1-E
-                                   └──▶ P1-F
+P0-A ──▶ P2-A ──┬──▶ P1-A ──▶ P1-B ──▶ P1-C ──┬──▶ P1-D
+                │                              ├──▶ P1-E
+                │                              └──▶ P1-F
+                ├──▶ P2-B
+                ├──▶ P3-B
+                └──▶ P4-C
 ```
 
-`P0-B`, `P2-C`, `P3-A`, `P3-C`, `P4-A`, `P4-B`, `P5-A`, and `P5-B` have no hard
-predecessors and can be picked up whenever they are the most valuable next thing.
+P1-A also blocks P2-B: the ablation needs both a working retrieval path and a harness to
+measure it with.
+
+`P0-B`, `P2-C`, `P3-A`, `P3-C`, `P4-A`, `P4-B`, `P5-A`, `P5-B`, and `P5-C` have no hard
+predecessors and can be picked up whenever they are the most valuable next thing. P5-C
+was previously drawn as a predecessor of P2-A; it is not one. `retryPolicy`,
+`compile({ checkpointer })`, and a peer-compatible
+`@langchain/langgraph-checkpoint-postgres@0.1.3` are all available at the pinned
+`@langchain/langgraph@0.4.10`.
