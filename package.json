@@ -17,6 +17,7 @@
     "test:eval": "turbo test:eval",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "lint:docs": "node scripts/lint-docs.mjs",
     "clean": "turbo clean"
   },
   "devDependencies": {

@@ -22,6 +22,7 @@ jobs:
 
       - run: yarn install --immutable
       - run: yarn format:check
+      - run: yarn lint:docs
       - run: yarn turbo lint
       - run: yarn turbo typecheck
       - run: yarn turbo test:unit
