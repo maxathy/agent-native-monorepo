@@ -14,3 +14,6 @@ before making any changes.
 - Run `yarn turbo typecheck` and `yarn turbo lint` before declaring any task complete.
 - See .context/workflows.md for how to add a new graph node, package, or memory adapter.
 - See .agents/ for specialized subagent prompts to use for common tasks.
+- Planned work lives in docs/prd/ and is indexed by docs/prd/README.md. Read the index
+  before proposing new work — it may already be a PRD with a decided approach.
+- Decisions live in docs/adr/. Do not contradict an accepted record without superseding it.

@@ -19,3 +19,13 @@ Use the prompts in .agents/ to delegate to a specialized subagent when appropria
 - .agents/graph-author.md — scaffold new LangGraph nodes
 - .agents/memory-author.md — add/modify memory adapters
 - .agents/test-author.md — write tests for new code
+
+## Planned Work
+
+- `docs/prd/README.md` — the backlog index. Every planned change is described here before
+  it is built. Read it before proposing new work; the thing you are about to suggest may
+  already be a PRD with a decided approach.
+- `docs/adr/` — architecture decision records. Do not contradict an accepted record
+  without superseding it.
+
+Use `.agents/prd-author.md` when writing or revising a PRD.
