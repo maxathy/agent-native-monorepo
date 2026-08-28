@@ -19,6 +19,10 @@ export function createLogger(name: string): Logger {
   return pino({
     name,
     level: process.env['LOG_LEVEL'] ?? 'info',
+    // Without this an Error logged as `{ error: err }` serializes to `{}`, because
+    // message and stack are non-enumerable. A container dying with `"error":{}` in
+    // its last log line is unreadable, which is the opposite of the point.
+    serializers: { error: pino.stdSerializers.err, err: pino.stdSerializers.err },
     mixin() {
       const store = als.getStore();
       return store?.correlationId ? { correlationId: store.correlationId } : {};

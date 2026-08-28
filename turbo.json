@@ -29,7 +29,8 @@
     },
     "test:e2e": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      "env": ["E2E_BASE_URL"]
     },
     "test:eval": {
       "dependsOn": ["build"],

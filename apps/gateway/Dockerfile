@@ -24,7 +24,11 @@ RUN yarn turbo build --filter=@repo/gateway
 FROM base AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S gateway -u 1001
 COPY --from=builder --chown=gateway:nodejs /app/apps/gateway/dist ./dist
+# node_modules/@repo/* are symlinks into ../../packages, so the packages tree has
+# to land at the same relative path or every workspace import resolves to nothing:
+# "Cannot find package '@repo/telemetry' imported from /app/dist/main.js".
 COPY --from=builder --chown=gateway:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=gateway:nodejs /app/packages ./packages
 USER gateway
 EXPOSE 3001
 CMD ["node", "dist/server.js"]

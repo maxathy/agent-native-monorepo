@@ -8,7 +8,12 @@ let sdk: NodeSDK | undefined;
 
 export function initTelemetry(serviceName?: string): void {
   const name = serviceName ?? process.env['OTEL_SERVICE_NAME'] ?? 'agent-service';
-  const endpoint = process.env['OTEL_EXPORTER_OTLP_ENDPOINT'] ?? 'http://localhost:4318';
+  // `??` only falls back on undefined, and docker-compose passes
+  // OTEL_EXPORTER_OTLP_ENDPOINT through as an empty string when the host has none
+  // set. That built the url '/v1/traces', which OTLPTraceExporter rejects in its
+  // constructor, so `docker compose --profile full up` died during bootstrap.
+  const configuredEndpoint = process.env['OTEL_EXPORTER_OTLP_ENDPOINT']?.trim();
+  const endpoint = configuredEndpoint ? configuredEndpoint : 'http://localhost:4318';
 
   sdk = new NodeSDK({
     resource: resourceFromAttributes({

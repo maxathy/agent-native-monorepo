@@ -24,7 +24,11 @@ RUN yarn turbo build --filter=@repo/agent-service
 FROM base AS runner
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 COPY --from=builder --chown=nestjs:nodejs /app/apps/agent-service/dist ./dist
+# node_modules/@repo/* are symlinks into ../../packages, so the packages tree has
+# to land at the same relative path or every workspace import resolves to nothing:
+# "Cannot find package '@repo/telemetry' imported from /app/dist/main.js".
 COPY --from=builder --chown=nestjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nodejs /app/packages ./packages
 USER nestjs
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
