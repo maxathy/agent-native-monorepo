@@ -69,16 +69,16 @@ ablation in P2-B.
 The type names follow the vocabulary used in published agent-evaluation practice, so the
 package reads as familiar rather than bespoke:
 
-| Type | Meaning |
-| --- | --- |
-| `Task` | One evaluable scenario: input, seed state, and graders. |
-| `Trial` | One execution of a task. Agents are stochastic, so tasks run *n* trials. |
-| `AgentHarness` | Adapter that runs the system under test and returns a transcript. |
-| `EvalHarness` | Loads tasks, resets the environment, runs trials, aggregates. |
-| `Transcript` | The full record of a trial: messages, node sequence, tool calls, spans. |
-| `Outcome` | The environment state *after* the trial. |
-| `Grader` | `(transcript, outcome) => Score`. |
-| `Suite` | A named collection of tasks with shared configuration. |
+| Type           | Meaning                                                                  |
+| -------------- | ------------------------------------------------------------------------ |
+| `Task`         | One evaluable scenario: input, seed state, and graders.                  |
+| `Trial`        | One execution of a task. Agents are stochastic, so tasks run _n_ trials. |
+| `AgentHarness` | Adapter that runs the system under test and returns a transcript.        |
+| `EvalHarness`  | Loads tasks, resets the environment, runs trials, aggregates.            |
+| `Transcript`   | The full record of a trial: messages, node sequence, tool calls, spans.  |
+| `Outcome`      | The environment state _after_ the trial.                                 |
+| `Grader`       | `(transcript, outcome) => Score`.                                        |
+| `Suite`        | A named collection of tasks with shared configuration.                   |
 
 ### The load-bearing decision: grade the outcome
 
@@ -96,7 +96,7 @@ export interface Grader<TOutcome = unknown> {
 }
 
 export interface Score {
-  readonly value: number;        // normalized 0..1
+  readonly value: number; // normalized 0..1
   readonly label: 'pass' | 'fail';
   readonly explanation?: string; // required for kind === 'model'
 }
@@ -114,7 +114,7 @@ decompose into several binary sub-graders and report the fraction satisfied.
 
 ### Reliability reporting
 
-The runner executes *n* trials per task (default 5) and reports both:
+The runner executes _n_ trials per task (default 5) and reports both:
 
 - **`pass@k`** — at least one of k trials passed. Capability.
 - **`pass^k`** — all k trials passed. Reliability.
