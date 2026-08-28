@@ -26,7 +26,7 @@ against the project's conventions.
 7. **Test Coverage:** New graph nodes must have a corresponding unit test. New memory
    adapters must have integration tests against real Postgres and Neo4j — provided by
    `docker-compose.yml` locally and by service containers in CI. (This repo has never used
-   testcontainers, despite older wording elsewhere saying so; see P0-B row 8.)
+   testcontainers, despite older wording elsewhere saying so; see `docs/STATUS.md` row 8.)
 
 8. **File Naming:** `kebab-case.ts` for source files, `PascalCase.tsx` for React components.
 
@@ -52,4 +52,5 @@ against the project's conventions.
 
 13. **Documented Claims:** A pull request may not add a capability claim to `README.md` or
     `.context/` that is not true of the code it ships. Aspirational statements belong in
-    `docs/prd/`. Run `yarn lint:docs`.
+    `docs/prd/`. `docs/STATUS.md` is the per-capability matrix: a change that moves a row
+    updates it in the same pull request. Run `yarn lint:docs`.

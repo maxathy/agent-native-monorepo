@@ -44,7 +44,9 @@ This is the most critical constraint. All writes must be replay-safe:
 ## Testing Requirements
 
 - **Integration tests only** — no mocking Neo4j or Postgres.
-- Use `testcontainers` to spin up real containers.
+- Real databases, not containers you start yourself: `docker-compose.yml` provides them
+  locally and `e2e.yml` provides them as service containers. The suites read `DATABASE_URL`
+  and `NEO4J_URI` and skip when those are unset. This repo has never used `testcontainers`.
 - Verify round-trip: write → read → assert expected data.
 - Verify idempotency: write twice with same data → assert no duplicates.
 - Place tests in `packages/memory-core/test/`.

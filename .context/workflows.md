@@ -111,8 +111,11 @@ workflow for you; the steps below are the tool-agnostic version.
    - Neo4j: Always use `MERGE`, never `CREATE`.
    - pgvector: Always upsert on `content_hash`, never bare `INSERT`.
 4. Export from `packages/memory-core/src/index.ts`.
-5. Add integration tests using testcontainers in `packages/memory-core/test/`:
-   - Spin up real containers (no mocks).
+5. Add integration tests in `packages/memory-core/test/`:
+   - Run against real databases, never mocks. They come from `docker-compose.yml` locally
+     and from service containers in `e2e.yml`; the suites read `DATABASE_URL` and
+     `NEO4J_URI` and skip when those are unset. This repo has never used `testcontainers`,
+     despite older wording that said so.
    - Verify write/read round-trip.
    - Verify idempotency (run twice, assert no duplicates).
 6. Run `yarn turbo test:integration` to verify.

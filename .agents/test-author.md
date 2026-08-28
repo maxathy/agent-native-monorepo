@@ -4,12 +4,12 @@ You are a specialized agent for writing tests in this monorepo.
 
 ## Test Framework Matrix
 
-| Scope                                      | Framework               | Location               | I/O             |
-| ------------------------------------------ | ----------------------- | ---------------------- | --------------- |
-| Unit tests (`packages/`)                   | Vitest                  | Co-located `*.test.ts` | None            |
-| Service tests (`apps/agent-service`)       | Jest + @nestjs/testing  | `test/` directory      | Mocked graph    |
-| Integration tests (`packages/memory-core`) | Vitest + testcontainers | `test/` directory      | Real containers |
-| E2E tests (`apps/console`)                 | Playwright              | `e2e/` directory       | Full stack      |
+| Scope                                      | Framework              | Location               | I/O             |
+| ------------------------------------------ | ---------------------- | ---------------------- | --------------- |
+| Unit tests (`packages/`)                   | Vitest                 | Co-located `*.test.ts` | None            |
+| Service tests (`apps/agent-service`)       | Jest + @nestjs/testing | `test/` directory      | Stub graph deps |
+| Integration tests (`packages/memory-core`) | Vitest                 | `test/` directory      | Real databases  |
+| E2E tests (`apps/console`)                 | Playwright             | `e2e/` directory       | Compose stack   |
 
 ## Unit Tests (Vitest)
 
@@ -39,21 +39,30 @@ You are a specialized agent for writing tests in this monorepo.
 ## Service Tests (Jest + @nestjs/testing)
 
 - Use `Test.createTestingModule()` to build the NestJS testing module.
-- Mock the LangGraph graph execution to return a fixed `AgentState`.
+- Run the real graph against the stub dependency set rather than mocking the graph. Clear
+  `GOOGLE_API_KEY` in `beforeAll`: `RunsService.getDeps()` reads it per request and
+  switches to live Gemini calls when it is set, so a spec that leaves it alone passes or
+  fails according to the developer's shell.
 - Test: controller input validation, interceptor behavior, filter error shapes.
 - Use `supertest` for HTTP assertions.
 
-## Integration Tests (testcontainers)
+## Integration Tests (real databases)
 
-- **No mocking of databases.** Always use real containers.
-- Spin up containers in `beforeAll`, tear down in `afterAll`.
-- Run Drizzle migrations against the test container before tests.
+- **No mocking of databases.** They come from `docker-compose.yml` locally and from service
+  containers in `e2e.yml`; the suites read `DATABASE_URL` and `NEO4J_URI` and skip when
+  those are unset. This repo has never used `testcontainers`.
+- Create the schema the suite needs in `beforeAll` and clean up in `afterAll`. There are no
+  migrations in this repository yet — the only `CREATE TABLE episodes` lives inside a test.
+  P2-A owns fixing that.
 - Test round-trip: write → read → assert.
 - Test idempotency: write twice → assert no duplicates.
 
 ## E2E Tests (Playwright)
 
-- Drive the React console UI against the full local stack.
+- Drive the React console UI against the full local stack: bring it up with
+  `docker compose --profile full up -d --build --wait` and set
+  `E2E_BASE_URL=http://localhost:8080`. Without that variable Playwright boots the Vite dev
+  server, which serves the UI with no backend behind it.
 - Test flow: navigate → fill form → submit → observe SSE stream → inspect metadata.
 - Assert: HTTP responses, SSE stream timing, metadata panel content.
 
