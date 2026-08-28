@@ -19,12 +19,32 @@ only `packages/memory-core/package.json:15` declares" is a fact a reader can che
 thirty seconds. Write the second kind. If you cannot cite it, verify it before you write
 it or leave it out.
 
+**Reading a script is not evidence that it runs.** P0-A asserted that a Jest spec "is run
+by `"test": "jest"`" on the strength of reading `package.json`. The spec was not merely
+unwired from CI — it could not execute at all, because the Jest config required a
+dependency that was not installed. If a claim is about whether something runs, run it.
+
+**Files named in the Design section are grepped, not recalled.** P0-A's design listed the
+files touched by a rename and got two of them wrong: it missed that the field also lives in
+`packages/memory-core`, and named a node that does not read it. Both were one grep away.
+
+**Size a PRD against code that has never run as unknown, not small.** P0-A was sized `S` on
+two known defects and took nine commits, because six more sat behind them, each visible only
+once the one in front was cleared. A defect found by reading is one defect; the count is
+only known after the thing runs.
+
 **No adjectives in the Problem section.** Not "seriously broken" — state what happens, with
 the error text if there is one.
 
 **Acceptance criteria are checkable.** Each bullet must be something CI or a reviewer can
 verify as true or false. "Improve retrieval quality" is not a criterion; "the ablation
 reports Recall@10 for graph-only, vector-only, and hybrid" is.
+
+**A criterion that needs a caveat to be true is not met.** Split it into the part that
+holds and the part that does not, leave the second unchecked, and name the PRD that now
+owns it. Ticking a box and appending an explanation is how `shipped` stops meaning
+anything — and `yarn lint:docs` fails a `shipped` PRD whose unchecked criteria name no
+owner, so the deferral has to be explicit.
 
 **Non-goals name their successor.** If the PRD defers something, say which PRD picks it up.
 An unowned deferral is a gap, not a scope decision.

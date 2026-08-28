@@ -144,10 +144,13 @@ next reader will otherwise assume this PRD's Problem section was the whole story
 - [x] `yarn turbo test:service` runs `apps/agent-service/test/runs.e2e-spec.ts` and passes.
 - [x] `ci.yml` invokes `test:service`; a separate workflow invokes `test:e2e` against the
       full compose stack.
-- [x] The README quickstart commands, executed verbatim against a fresh clone, succeed.
-      Verified against a clone with no `.env`, which is the state the command block assumes.
-      Following the Prerequisites section and supplying a `GOOGLE_API_KEY` still returns 500
-      on a retired embedding model — see "Risks and open questions", handed to P2-A.
+- [x] The README quickstart commands succeed against a fresh clone with no `.env`, which is
+      the state the command block alone assumes.
+- [ ] The README quickstart succeeds on the path the Prerequisites section documents —
+      `cp .env.example .env` with a `GOOGLE_API_KEY` set. It returns 500: `text-embedding-004`
+      is retired, and its replacement changes the embedding dimension that
+      `pgvector.writer.ts`, `retrieval-facade.ts`, and `seed-eval-fixtures.mjs` hardcode as 768. Deferred to P2-A, which owns the dependency set. Until it lands the README must
+      not tell a reader to set a key that produces a 500; reordering that section is P0-B's.
 
 ## Risks and open questions
 

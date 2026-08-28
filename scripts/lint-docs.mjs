@@ -80,7 +80,8 @@ const byId = new Map();
 
 for (const file of files) {
   const where = `docs/prd/${file}`;
-  const fm = frontmatter(readFileSync(join(prdDir, file), 'utf-8'));
+  const body = readFileSync(join(prdDir, file), 'utf-8');
+  const fm = frontmatter(body);
   if (!fm) {
     fail(where, 'no YAML frontmatter block');
     continue;
@@ -106,6 +107,25 @@ for (const file of files) {
     fail(where, 'status is `in-progress` but no issue is recorded');
   if (fm.status === 'superseded' && !fm.superseded_by)
     fail(where, 'status is `superseded` but `superseded_by` is empty');
+
+  // A shipped PRD may still carry unmet criteria — but each one must name the PRD that
+  // now owns it. The naive rule (shipped implies zero unchecked boxes) is worse than
+  // useless: it pressures the author to tick a box and append a caveat, which is exactly
+  // how `shipped` stops meaning anything.
+  if (fm.status === 'shipped') {
+    const section = /## Acceptance criteria\n([\s\S]*?)(?=\n## )/.exec(body);
+    if (section) {
+      for (const item of section[1].split(/\n(?=- \[)/)) {
+        if (!item.trim().startsWith('- [ ]')) continue;
+        if (!/\bP\d-[A-Z]\b/.test(item))
+          fail(
+            where,
+            'is shipped with an unmet criterion that names no owning PRD: ' +
+              `"${item.replace(/\s+/g, ' ').slice(6, 76).trim()}…"`,
+          );
+      }
+    }
+  }
   if (fm.id) byId.set(fm.id, { fm, where });
 }
 

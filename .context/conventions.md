@@ -63,8 +63,9 @@ Each tier has one command. All of them run in CI except `test:eval`, which is ni
 - **Decisions go in `docs/adr/`.** A record is not edited after it reaches `accepted` —
   supersede it with a new one instead.
 - `yarn lint:docs` checks the structure: frontmatter completeness, that every id resolves,
-  that `depends_on` and `blocks` are mutual, and that the index agrees with the files. It
-  runs on every pull request.
+  that `depends_on` and `blocks` are mutual, that the index agrees with the files, and that
+  a `shipped` PRD's unmet criteria each name the PRD that now owns them. It runs on every
+  pull request.
 - **A capability claim in `README.md` or `.context/` must be true of the code at HEAD.**
   If it is aspirational, it belongs in `docs/prd/` or in the status matrix, not in the
   present tense.
