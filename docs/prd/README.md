@@ -8,7 +8,8 @@ over it and update it._
 **The service runs now.** [P0-A](P0-A-make-it-run.md) is shipped. `POST /runs` returns a
 `RunResponse` and `POST /runs/stream` emits a frame per node, both directly and through the
 gateway, and both README quickstart curls succeed against a clone with no `.env`.
-`docker compose --profile full up` reaches six healthy containers for the first time.
+`docker compose --profile full up` reaches five healthy containers — six when P0-A shipped,
+before P0-B removed the Redis nothing connected to.
 
 **P0-A was not the two one-line fixes it was scoped as.** The channel/node collision and
 the missing `fixRequestBody` were both real, and behind them were six more defects, each
@@ -27,20 +28,33 @@ runs Playwright against the console container from `docker compose --profile ful
 than the Vite dev server with nothing behind it. A unit test calls `buildAgentGraph` and
 fails if the channel collision returns.
 
-**The documentation still describes capabilities the code does not have.**
-[P0-B](P0-B-reconcile-claims.md) carries the verified inventory — fifteen claims, each with
-its location and what is actually there. Re-verify each one before acting on it: P0-A
-closed some of them, including the compose stack and the CI coverage claims.
+**The documentation now says what the code does, and `docs/STATUS.md` is where it says
+it.** [P0-B](P0-B-reconcile-claims.md) is shipped. The matrix carries sixteen rows — the
+fifteen from its inventory plus the retired embedding model — each with a status, a file
+and a line, and the PRD that owns the rest. Eight of those rows are the same piece of work:
+`packages/memory-core` is a set of tested adapters that `apps/agent-service` never
+constructs, and P2-A is what constructs them. Redis is gone from compose, CI and
+`.env.example`; Node is pinned to 24 in the README, all five workflows and all three
+images; and the testcontainers convention the repository never followed is out of
+`.context/` and `.agents/`.
 
-**One live defect is parked, not fixed.** With a `GOOGLE_API_KEY` set, as the README
-prerequisites instruct, `POST /runs` returns 500 — `text-embedding-004` is retired. The
-replacement changes the embedding dimension, and 768 is hardcoded in `pgvector.writer.ts`,
-`retrieval-facade.ts`, and `scripts/seed-eval-fixtures.mjs`. That makes it P2-A's, and it
-is recorded in P0-A's risks.
+**Read `docs/STATUS.md` before trusting a capability sentence anywhere else.** It is the
+file this tier exists to produce, and the rule that keeps it current is in
+`.context/conventions.md` and `.agents/reviewer.md`: a change that moves a row moves it
+there in the same pull request.
 
-**Suggested next step:** P0-B. It is now the cheapest one — the inventory is written, P0-A
-just closed several of its rows, and it is what makes the repository safe to show while the
-larger PRDs are still drafts.
+**One live defect is parked, not fixed.** With a `GOOGLE_API_KEY` set, `POST /runs`
+returns 500 and `POST /runs/stream` stops after the `ingress` frame — `text-embedding-004`
+is retired. The replacement changes the embedding dimension, and 768 is hardcoded in
+`pgvector.writer.ts`, `retrieval-facade.ts`, and `scripts/seed-eval-fixtures.mjs`. That
+makes it P2-A's. The README no longer instructs anyone to set the key, and it is row 16 of
+`docs/STATUS.md`.
+
+**Suggested next step:** P1-A or P2-A, and the choice is about what the repository should
+prove next. P2-A retires eight `stubbed` rows and turns the architecture from a design into
+a running system; P1-A is the stated thesis and the harder thing to fake. P2-A is the more
+honest order — evaluating a graph whose memory tiers are no-ops measures the stub — but
+P1-A is the one a reader came for. Neither is small.
 
 **One decision is pending and blocks Tier 3:** `.agents/reviewer.md` rule 10 forbids
 medical and clinical terminology, which rules out the payer-domain vertical. It needs an
@@ -70,13 +84,15 @@ Sizes: `S` ≈ 1–2 days, `M` ≈ 3–5 days, `L` ≈ 1–2 weeks.
 
 ## Tier 0 — Truth alignment
 
-The repository currently documents capabilities it does not have. Until that is closed,
-every other tier compounds a credibility problem rather than a codebase.
+The repository documented capabilities it did not have, and did not run. Both are closed:
+the service runs and CI proves it, and `docs/STATUS.md` records what every documented
+capability is actually backed by. This tier is done — keeping the matrix true is now a
+standing rule in `.context/conventions.md`, not a piece of work.
 
 | ID                               | Title                                                 | Size | Status  |
 | -------------------------------- | ----------------------------------------------------- | ---- | ------- |
 | [P0-A](P0-A-make-it-run.md)      | Make the service run, and make CI unable to hide it   | S    | shipped |
-| [P0-B](P0-B-reconcile-claims.md) | Reconcile documented claims with implemented behavior | M    | draft   |
+| [P0-B](P0-B-reconcile-claims.md) | Reconcile documented claims with implemented behavior | M    | shipped |
 
 ## Tier 1 — Evaluation in CI
 

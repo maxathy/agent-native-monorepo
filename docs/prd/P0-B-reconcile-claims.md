@@ -2,7 +2,7 @@
 id: P0-B
 title: Reconcile documented claims with implemented behavior
 tier: 0
-status: draft
+status: shipped
 size: M
 depends_on: []
 blocks: []
@@ -91,17 +91,47 @@ or better, the sentence moves to `docs/STATUS.md` as a `planned` row with a PRD 
 
 ## Acceptance criteria
 
-- [ ] `docs/STATUS.md` exists with a row for all fifteen claims above, each carrying a
-      status and, where planned, the owning PRD.
-- [ ] Every sentence in `README.md` and `.context/` that describes a capability is either
+- [x] `docs/STATUS.md` exists with a row for all fifteen claims above, each carrying a
+      status and, where planned, the owning PRD. Sixteen rows: the retired embedding model
+      was added as row 16.
+- [x] Every sentence in `README.md` and `.context/` that describes a capability is either
       true of the code at HEAD or marked as planned.
-- [ ] `grep -rn "testcontainers\|HNSW\|TTL" README.md .context/` returns only text that
-      is accurate or explicitly forward-looking.
-- [ ] One Node version appears in README, all workflows, and all Dockerfiles.
-- [ ] Redis is either used in source or absent from compose, CI, and `.env.example`.
-- [ ] `yarn lint:docs` passes.
+- [x] `grep -rn "testcontainers\|HNSW\|TTL" README.md .context/` returns only text that
+      is accurate or explicitly forward-looking. Four hits remain, each a statement that
+      the thing is absent.
+- [x] One Node version appears in README, all workflows, and all Dockerfiles. Node 24.
+- [x] Redis is absent from compose, CI, and `.env.example`.
+- [x] `yarn lint:docs` passes.
 
 ## Risks and open questions
+
+Resolved during implementation:
+
+- **Rows 9 and 10 were already closed by P0-A**, as the reference note predicted, and row 8
+  was half-closed — `.agents/reviewer.md` carried the correction, while `workflows.md`,
+  `memory-author.md` and `test-author.md` still asserted testcontainers. The lesson is
+  narrower than "re-verify": a claim deleted in one file is not deleted, because these
+  claims were always written in three or four places at once, which is how they survived
+  in the first place.
+- **The audit missed a claim, and it was the one that was actually breaking a reader.**
+  `.env.example` documented `gemini-2.0-flash + text-embedding-004`; the code uses
+  `gemini-2.5-flash`, and `text-embedding-004` is retired. The inventory was built by
+  grepping source for documented capabilities, which finds capabilities that do not exist
+  and misses a documented capability that exists and is broken. Row 16 of `docs/STATUS.md`
+  is that row. The fix is P2-A's — it is a dimension decision — but the claim is corrected
+  here and the README now warns before telling anyone to set the key.
+- **`POST /runs/stream` compounds a node failure into a second error.** Once the first SSE
+  frame is written the response is committed, so `GlobalHttpExceptionFilter` writing a JSON
+  body onto it throws `ERR_HTTP_HEADERS_SENT` and the client is left with an open stream
+  that stops after `ingress`. Observed against the compose stack with `GOOGLE_API_KEY` set.
+  It belongs with the error handling in P2-A, which has no file yet — this is the record
+  until it does.
+- **Pinning Node moved the images down two majors**, from 26 to 24, so it was verified
+  rather than assumed: all three images rebuild, `docker compose --profile full` reaches
+  five healthy containers, and both README quickstart curls return through the gateway.
+  Five, not six — Redis is gone.
+
+Open, and handed on:
 
 - **The honest README is a less impressive README.** That is the correct trade. A
   calibrated claim survives a code read; an inflated one does not, and this repository is
@@ -113,9 +143,15 @@ or better, the sentence moves to `docs/STATUS.md` as a `planned` row with a PRD 
   what actually matters: real PHI, real member or claim data, and license-encumbered code
   sets such as CPT. **This needs a decision before Tier 3 starts, and it belongs in an ADR
   rather than in this PRD.**
-- Rule 7 of the same file requires integration tests "using testcontainers with real
-  containers," which is row 8 of the inventory — the reviewer prompt asserts a convention
-  the repository has never followed. Fix it in the same pass.
+- Rule 7 of the same file required integration tests "using testcontainers with real
+  containers," which is row 8 of the inventory. Fixed here, along with the same claim in
+  `.context/workflows.md`, `.agents/memory-author.md` and `.agents/test-author.md`.
+- **`docs/STATUS.md` is prose, and nothing lints prose.** `scripts/lint-docs.mjs` checks
+  PRD and ADR structure and cannot check that a row's evidence still resolves. What guards
+  the matrix is that every row names a file and a line, plus the rule in
+  `.context/conventions.md` and `.agents/reviewer.md` that a change moving a row updates it
+  in the same pull request. If it drifts anyway, the mechanical version is a check that
+  every `file.ts:NN` in the matrix exists — cheap, and worth a PRD if this file ages badly.
 
 ## References
 
