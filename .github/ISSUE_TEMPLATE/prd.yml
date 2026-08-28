@@ -1,0 +1,51 @@
+name: PRD implementation
+description: Track implementation of a PRD from docs/prd/
+title: 'PX-Y · '
+labels: ['prd']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open this only when work is actually starting. The backlog lives in
+        `docs/prd/README.md`; the tracker is for work in flight.
+
+        The PRD file is the content. Keep this issue short — if you find yourself
+        explaining the design here, it belongs in the PRD instead.
+  - type: input
+    id: prd
+    attributes:
+      label: PRD
+      description: Path to the PRD file.
+      placeholder: docs/prd/P1-A-eval-harness.md
+    validations:
+      required: true
+  - type: textarea
+    id: thesis
+    attributes:
+      label: Thesis
+      description: One or two sentences. What changes and why now.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Copy the checklist from the PRD so progress is visible here.
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: input
+    id: depends
+    attributes:
+      label: Blocked by
+      description: PRD ids or issue numbers, if any.
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: Preflight
+      options:
+        - label: The PRD status is `accepted`, not `draft`
+          required: true
+        - label: Its dependencies are shipped
+          required: true
