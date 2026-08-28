@@ -2,6 +2,23 @@
 
 Step-by-step guides for common development tasks in this monorepo.
 
+## Propose a Change
+
+Non-trivial work is described before it is built.
+
+1. Read `docs/prd/README.md`. The change you have in mind may already be a PRD with a
+   decided approach and known dependencies.
+2. If it is not, copy `docs/prd/_TEMPLATE.md` to `docs/prd/<ID>-<slug>.md` and fill it in.
+   Use `.agents/prd-author.md` if delegating to a subagent.
+3. Add a row to the index table in `docs/prd/README.md`. The `size` and `status` there must
+   match the file's frontmatter — `yarn lint:docs` enforces it.
+4. Keep `depends_on` and `blocks` mutual. The lint enforces that too, for PRDs that have
+   files.
+5. If the change settles a question a reviewer would reasonably ask "why," write an ADR in
+   `docs/adr/` and add it to that index.
+6. Open a GitHub issue only when work actually starts, using the PRD issue template. The
+   backlog lives in the index; the tracker is for work in flight.
+
 ## Add a New Graph Node
 
 1. Create `apps/agent-service/src/agent/nodes/<name>.node.ts`.

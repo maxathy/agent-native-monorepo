@@ -10,6 +10,8 @@ Always read before starting work:
 - .context/conventions.md — code style, naming, commit rules
 - .context/workflows.md — step-by-step guides for common tasks
 - .context/glossary.md — terminology reference
+- docs/prd/README.md — the backlog index; what is planned and what it depends on
+- docs/adr/ — decisions that must not be silently contradicted
 
 ## Specialized Subagent Prompts
 
@@ -19,6 +21,7 @@ Use the prompts in .agents/ to delegate to a specialized subagent when appropria
 - .agents/graph-author.md — scaffold new LangGraph nodes
 - .agents/memory-author.md — add/modify memory adapters
 - .agents/test-author.md — write tests for new code
+- .agents/prd-author.md — write or revise a PRD
 
 ## Planned Work
 

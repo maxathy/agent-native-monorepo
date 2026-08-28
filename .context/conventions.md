@@ -41,6 +41,18 @@
   No mocking of databases in integration tests.
 - **E2E (Playwright):** Full stack via `docker-compose.yml`.
 
+## Documentation
+
+- **Planned work goes in `docs/prd/`**, one file per PRD, indexed by `docs/prd/README.md`.
+- **Decisions go in `docs/adr/`.** A record is not edited after it reaches `accepted` —
+  supersede it with a new one instead.
+- `yarn lint:docs` checks the structure: frontmatter completeness, that every id resolves,
+  that `depends_on` and `blocks` are mutual, and that the index agrees with the files. It
+  runs on every pull request.
+- **A capability claim in `README.md` or `.context/` must be true of the code at HEAD.**
+  If it is aspirational, it belongs in `docs/prd/` or in the status matrix, not in the
+  present tense.
+
 ## Error Handling
 
 - Validate at system boundaries with Zod. Trust internal types.

@@ -173,11 +173,13 @@ Session-scoped turn history persisted in Postgres via Drizzle ORM. Records the f
 
 1. Fork the repository and create a feature branch.
 2. Read `.context/conventions.md` for code style and naming rules.
-3. Follow the step-by-step guides in `.context/workflows.md` for:
+3. For non-trivial work, start with a PRD — see `docs/prd/README.md` for the backlog and
+   `.context/workflows.md` for the flow. Decisions are recorded in `docs/adr/`.
+4. Follow the step-by-step guides in `.context/workflows.md` for:
    - Adding a new graph node
    - Adding a new package
    - Adding a new memory adapter
-4. Use the specialized subagent prompts in `.agents/` if working with AI coding tools.
-5. See `AGENTS.md` for cross-tool compatibility notes (Cursor, Kilo Code, Continue, Aider).
-6. Run `yarn turbo typecheck && yarn turbo lint` before submitting a PR.
-7. Use Conventional Commits: `feat:`, `fix:`, `chore:`, `test:`, `docs:`, `ci:`.
+5. Use the specialized subagent prompts in `.agents/` if working with AI coding tools.
+6. See `AGENTS.md` for cross-tool compatibility notes (Cursor, Kilo Code, Continue, Aider).
+7. Run `yarn turbo typecheck && yarn turbo lint` before submitting a PR.
+8. Use Conventional Commits: `feat:`, `fix:`, `chore:`, `test:`, `docs:`, `ci:`.

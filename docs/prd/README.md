@@ -1,5 +1,35 @@
 # Product Requirement Docs
 
+## Where things stand
+
+_Last updated 2026-08-28. If this section is more than a few weeks stale, trust the code
+over it and update it._
+
+**The service does not currently run.** `buildAgentGraph` throws before `compile()` because
+`plan` is both a state channel and a node name, so every request returns 500; and the
+gateway hangs on any proxied POST. Both are one-line fixes, both are specified in
+[P0-A](P0-A-make-it-run.md), and neither has been applied yet. Nothing in Tier 1 or Tier 2
+is meaningful until P0-A lands.
+
+**The documentation describes capabilities the code does not have.**
+[P0-B](P0-B-reconcile-claims.md) carries the verified inventory — fifteen claims, each with
+its location and what is actually there. That inventory is the most reusable thing in this
+directory; read it before trusting `README.md` or `.context/`.
+
+**What exists so far is this planning system itself**: the PRD directory, the ADR
+directory, `scripts/lint-docs.mjs` wired into CI, and a `prd-author` subagent prompt. No
+PRD has been implemented.
+
+**Suggested next step:** P0-A, then P0-B. P0-B is the one where writing it and doing it are
+nearly the same activity, and it is what makes the repository safe to show while the larger
+PRDs are still drafts.
+
+**One decision is pending and blocks Tier 3:** `.agents/reviewer.md` rule 10 forbids
+medical and clinical terminology, which rules out the payer-domain vertical. It needs an
+ADR, not a unilateral edit. See P0-B, "Risks and open questions."
+
+---
+
 This directory is the backlog. Each PRD is one file with YAML frontmatter; the frontmatter
 is the machine-readable part (`status`, `size`, `depends_on`, `issue`) and the body is the
 argument for why the work is worth doing.
