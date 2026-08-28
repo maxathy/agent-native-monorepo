@@ -26,10 +26,20 @@ export class GlobalHttpExceptionFilter implements ExceptionFilter {
     const correlationId =
       getCorrelationId() ?? (req as Request & { correlationId?: string }).correlationId;
 
+    // A 4xx HttpException may carry a structured payload: ZodValidationPipe puts
+    // `error: 'Validation Error'` and the Zod `issues` array there. Flattening it
+    // to a generic 'Bad Request' discards the only part of the response a client
+    // can act on. 5xx payloads are never forwarded — they may carry internals.
+    const detail =
+      exception instanceof HttpException && status < HttpStatus.INTERNAL_SERVER_ERROR
+        ? exception.getResponse()
+        : undefined;
+
     const body = {
-      statusCode: status,
-      error: status >= 500 ? 'Internal Server Error' : 'Bad Request',
+      error: status >= HttpStatus.INTERNAL_SERVER_ERROR ? 'Internal Server Error' : 'Bad Request',
       message,
+      ...(typeof detail === 'object' && detail !== null ? detail : {}),
+      statusCode: status,
       correlationId,
     };
 
