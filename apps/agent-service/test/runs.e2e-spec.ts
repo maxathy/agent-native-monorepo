@@ -3,12 +3,21 @@ import { type INestApplication, HttpStatus } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { ZodValidationPipe } from '../src/common/pipes/zod-validation.pipe.js';
-import { RunRequestSchema } from '@repo/agent-contracts';
+import { RunRequestSchema, RunResponseSchema } from '@repo/agent-contracts';
 
 describe('RunsController (e2e)', () => {
   let app: INestApplication;
+  let savedApiKey: string | undefined;
 
   beforeAll(async () => {
+    // RunsService.getDeps() reads GOOGLE_API_KEY at request time and switches to
+    // live Gemini calls when it is set. The README tells every reader to put one
+    // in .env, so without this the suite reaches the network and fails on
+    // whatever the model catalogue looks like that day. This suite covers the
+    // HTTP surface and graph wiring, so it pins the stub dependency set.
+    savedApiKey = process.env['GOOGLE_API_KEY'];
+    delete process.env['GOOGLE_API_KEY'];
+
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -20,6 +29,7 @@ describe('RunsController (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+    if (savedApiKey !== undefined) process.env['GOOGLE_API_KEY'] = savedApiKey;
   });
 
   describe('POST /runs', () => {
@@ -34,9 +44,7 @@ describe('RunsController (e2e)', () => {
         });
 
       expect(response.status).toBe(HttpStatus.OK);
-      expect(response.body).toHaveProperty('runId');
-      expect(response.body).toHaveProperty('outcome');
-      expect(response.body).toHaveProperty('tokenCounts');
+      expect(() => RunResponseSchema.parse(response.body)).not.toThrow();
       expect(response.body.sessionId).toBe('550e8400-e29b-41d4-a716-446655440000');
     });
 

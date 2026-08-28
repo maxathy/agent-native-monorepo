@@ -11,7 +11,7 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",
-    "test": "jest",
+    "test:service": "NODE_OPTIONS=--experimental-vm-modules jest",
     "test:unit": "vitest run"
   },
   "dependencies": {
