@@ -25,10 +25,10 @@ Sizes: `S` ≈ 1–2 days, `M` ≈ 3–5 days, `L` ≈ 1–2 weeks.
 The repository currently documents capabilities it does not have. Until that is closed,
 every other tier compounds a credibility problem rather than a codebase.
 
-| ID                          | Title                                                 | Size | Status |
-| --------------------------- | ----------------------------------------------------- | ---- | ------ |
-| [P0-A](P0-A-make-it-run.md) | Make the service run, and make CI unable to hide it   | S    | draft  |
-| P0-B                        | Reconcile documented claims with implemented behavior | S    | draft  |
+| ID                               | Title                                                 | Size | Status |
+| -------------------------------- | ----------------------------------------------------- | ---- | ------ |
+| [P0-A](P0-A-make-it-run.md)      | Make the service run, and make CI unable to hide it   | S    | draft  |
+| [P0-B](P0-B-reconcile-claims.md) | Reconcile documented claims with implemented behavior | M    | draft  |
 
 ## Tier 1 — Evaluation in CI
 
