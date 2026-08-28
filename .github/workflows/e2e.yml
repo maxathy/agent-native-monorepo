@@ -46,3 +46,45 @@ jobs:
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: password
           REDIS_URL: redis://localhost:6379
+
+  browser-e2e:
+    name: Playwright against the full compose stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20.x'
+          cache: 'yarn'
+
+      - run: yarn install --immutable
+
+      # The suite used to boot only the Vite dev server, so its assertions passed
+      # against a page with no backend behind it. Here the console container serves
+      # the production bundle and proxies /api to the gateway, which is the path a
+      # reader actually exercises.
+      - name: Start the full stack
+        run: docker compose --profile full up -d --build --wait --wait-timeout 300
+
+      - run: yarn playwright install --with-deps chromium
+        working-directory: apps/console
+
+      - run: yarn turbo test:e2e
+        env:
+          E2E_BASE_URL: http://localhost:8080
+
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose --profile full logs --no-color
+
+      - uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/console/playwright-report/
+          retention-days: 7
+
+      - name: Tear down
+        if: always()
+        run: docker compose --profile full down -v
