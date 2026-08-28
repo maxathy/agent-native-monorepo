@@ -24,16 +24,13 @@ jobs:
         env:
           NEO4J_AUTH: neo4j/password
         ports: ['7687:7687']
-      redis:
-        image: redis:7-alpine
-        ports: ['6379:6379']
 
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'yarn'
 
       - run: yarn install --immutable
@@ -45,7 +42,6 @@ jobs:
           NEO4J_URI: bolt://localhost:7687
           NEO4J_USER: neo4j
           NEO4J_PASSWORD: password
-          REDIS_URL: redis://localhost:6379
 
   browser-e2e:
     name: Playwright against the full compose stack
@@ -55,7 +51,7 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '20.x'
+          node-version: '24.x'
           cache: 'yarn'
 
       - run: yarn install --immutable
