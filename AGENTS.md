@@ -32,3 +32,8 @@ Use the prompts in .agents/ to delegate to a specialized subagent when appropria
   without superseding it.
 
 Use `.agents/prd-author.md` when writing or revising a PRD.
+
+Claude Code has a `/prd <id>` command (`.claude/commands/prd.md`) that runs the whole flow —
+implement if the PRD exists, draft it for review if the id is in the index but the file is
+not. Other tools should follow "Propose a Change" in `.context/workflows.md`, which is the
+same procedure written portably.

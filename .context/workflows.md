@@ -4,7 +4,8 @@ Step-by-step guides for common development tasks in this monorepo.
 
 ## Propose a Change
 
-Non-trivial work is described before it is built.
+Non-trivial work is described before it is built. In Claude Code, `/prd <id>` runs this
+workflow for you; the steps below are the tool-agnostic version.
 
 1. Read `docs/prd/README.md`. The change you have in mind may already be a PRD with a
    decided approach and known dependencies.
