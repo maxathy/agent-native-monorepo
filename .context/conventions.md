@@ -69,6 +69,9 @@ Each tier has one command. All of them run in CI except `test:eval`, which is ni
 - **A capability claim in `README.md` or `.context/` must be true of the code at HEAD.**
   If it is aspirational, it belongs in `docs/prd/` or in the status matrix, not in the
   present tense.
+- **`docs/STATUS.md` is that status matrix**, one row per documented capability with what
+  is actually behind it and which PRD owns the rest. A change that moves a row — wiring an
+  adapter, deleting a claim — updates the row in the same pull request.
 
 ## Error Handling
 
@@ -82,7 +85,10 @@ Each tier has one command. All of them run in CI except `test:eval`, which is ni
   Nest has no `design:paramtypes` to resolve an implicit constructor parameter and injects
   `undefined`. It only breaks on the dev path — `tsc` emits the metadata — so the compiled
   build and the service tests will not catch it.
-- Graph nodes return `Partial<AgentState>` — never throw from within a node.
+- Graph nodes return `Partial<AgentState>`. Containing failure inside the node is the
+  intent, and the code does not do it yet: `ingress.node.ts` throws on a Zod parse failure,
+  and `retrieve` and `reflect` propagate I/O errors to the caller. Do not add a new node
+  that widens that gap.
 
 ## Dependencies
 

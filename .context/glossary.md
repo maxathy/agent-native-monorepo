@@ -5,7 +5,7 @@
 - **Working Memory:** Per-run, in-process state held in the LangGraph `AgentState` object.
   Destroyed at run completion. No external I/O.
 - **Episodic Memory:** Session-scoped turn history persisted in Postgres via Drizzle ORM.
-  Configurable TTL (default 90 days). Raw material for Semantic promotion.
+  Retention is currently unbounded. Raw material for Semantic promotion.
 - **Semantic Memory:** Long-term knowledge stored across two complementary indices — a Neo4j
   knowledge graph for symbolic traversal and a pgvector collection for dense similarity search.
 
@@ -31,14 +31,18 @@
 
 - **`vector` column type:** Postgres column storing fixed-dimension float arrays.
 - **`<=>` operator:** Cosine distance operator for similarity search.
-- **HNSW index:** Approximate nearest neighbor index for fast vector search.
+- **HNSW index:** Approximate nearest neighbor index for fast vector search. Not built
+  here — `semantic_facts` carries no index on `embedding`, so every `<=>` query is a
+  sequential scan.
 - **Content hash:** SHA-256 of fact text, used as upsert key for idempotent writes.
 
 ## Retrieval
 
 - **RRF (Reciprocal Rank Fusion):** Merge strategy that combines ranked lists from multiple
   sources. Score = Σ(1 / (k + rank_i)) where k is a smoothing constant (typically 60).
-  Used to merge Neo4j graph traversal results with pgvector similarity results.
+  Intended to merge Neo4j graph traversal results with pgvector similarity results; the
+  implementation keys the two lists differently and so interleaves them instead. See
+  ADR 0002.
 - **Hybrid retrieval:** Querying both Neo4j and pgvector, then merging via RRF.
 
 ## Observability
@@ -56,3 +60,8 @@
   Episodic memory is scoped to sessions.
 - **Turn:** A single user→assistant exchange within a run. Episodic rows are indexed by
   `turnIndex` within a session.
+
+## Where the words and the code disagree
+
+Several entries above name a design this repository has not finished building. `docs/STATUS.md`
+is the per-capability matrix that says which is which, and it is the file to trust.
