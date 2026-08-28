@@ -12,7 +12,7 @@ export const WorkingMemorySchema = z.object({
   correlationId: z.string(),
   messages: z.array(MessageSchema),
   retrievedContext: z.array(RetrievedContextItemSchema),
-  plan: z.string().optional(),
+  currentPlan: z.string().optional(),
   toolOutputs: z.array(z.unknown()),
   tokenCounts: TokenCountsSchema,
   outcome: OutcomeSchema.optional(),

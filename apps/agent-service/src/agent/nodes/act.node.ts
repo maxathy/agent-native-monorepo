@@ -20,14 +20,14 @@ export async function actNode(state: AgentState, deps: ActNodeDeps): Promise<Par
       span.setAttribute('session_id', state.sessionId);
       span.setAttribute('step_count', state.stepCount);
 
-      if (!state.plan) {
+      if (!state.currentPlan) {
         return {
           shouldContinue: false,
           stepCount: state.stepCount + 1,
         };
       }
 
-      const selection = await deps.selectTool(state.plan, deps.tools);
+      const selection = await deps.selectTool(state.currentPlan, deps.tools);
 
       if (!selection) {
         // No tool needed — plan is complete

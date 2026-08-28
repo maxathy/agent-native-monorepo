@@ -12,7 +12,7 @@ export const AgentStateSchema = WorkingMemorySchema.extend({
   stepCount: z.number().int().nonnegative().default(0),
   maxSteps: z.number().int().positive().default(10),
   shouldContinue: z.boolean().default(true),
-  plan: z.string().optional(),
+  currentPlan: z.string().optional(),
   toolOutputs: z.array(ToolOutputSchema).default([]),
 });
 

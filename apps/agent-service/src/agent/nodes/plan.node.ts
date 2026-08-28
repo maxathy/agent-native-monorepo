@@ -40,7 +40,7 @@ export async function planNode(
       span.setAttribute('completion_tokens', response.tokenCounts.completion);
 
       return {
-        plan: response.content,
+        currentPlan: response.content,
         tokenCounts: {
           prompt: state.tokenCounts.prompt + response.tokenCounts.prompt,
           completion: state.tokenCounts.completion + response.tokenCounts.completion,

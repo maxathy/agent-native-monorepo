@@ -21,7 +21,7 @@ const AgentStateAnnotation = Annotation.Root({
   correlationId: Annotation<string>,
   messages: Annotation<AgentState['messages']>,
   retrievedContext: Annotation<AgentState['retrievedContext']>,
-  plan: Annotation<string | undefined>,
+  currentPlan: Annotation<string | undefined>,
   toolOutputs: Annotation<AgentState['toolOutputs']>,
   tokenCounts: Annotation<AgentState['tokenCounts']>,
   outcome: Annotation<AgentState['outcome']>,

@@ -162,8 +162,8 @@ Session-scoped turn history persisted in Postgres via Drizzle ORM. Records the f
 | ---------- | ------------------------------- | ------------------------------ | --------------------------- | -------------------------------------------- |
 | `ingress`  | Validate request, seed state    | Raw HTTP body                  | Full `AgentState`           | None                                         |
 | `retrieve` | Hybrid semantic recall          | `messages`                     | `retrievedContext`          | pgvector query, Neo4j traversal              |
-| `plan`     | LLM planning step               | `messages`, `retrievedContext` | `plan`, `tokenCounts`       | LLM API call                                 |
-| `act`      | Tool execution loop             | `plan`                         | `toolOutputs`, `stepCount`  | Tool invocations                             |
+| `plan`     | LLM planning step               | `messages`, `retrievedContext` | `currentPlan`, `tokenCounts` | LLM API call                                |
+| `act`      | Tool execution loop             | `currentPlan`                  | `toolOutputs`, `stepCount`  | Tool invocations                             |
 | `reflect`  | Memory consolidation            | Full state                     | _(none — side-effect node)_ | Episodic write, Neo4j MERGE, pgvector upsert |
 | `egress`   | Validate output, build response | Full state                     | `outcome`                   | None                                         |
 
