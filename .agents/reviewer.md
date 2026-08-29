@@ -32,15 +32,23 @@ against the project's conventions.
 
 9. **Barrel Exports:** New exports must be added to the package's `src/index.ts`.
 
-10. **Sanitization:** No references to proprietary names, medical/clinical terms, or real
-    API keys. The only LLM system prompt allowed is: "You are a helpful research assistant."
+10. **Sanitization:** The boundary is licensed content and real data, not vocabulary — see
+    ADR 0003. Payer-domain terminology is permitted and expected in Tier 3. Reject a change
+    that introduces:
 
-    > **This rule is contested and blocks Tier 3.** It was written to keep proprietary
-    > material out of a sanitized extraction, which is still right, but as worded it also
-    > forbids the payer-domain vertical in P3-A through P3-D. The replacement should ban
-    > what actually matters — real PHI, real member or claim data, and license-encumbered
-    > code sets such as CPT — rather than the vocabulary. Do not enforce or relax this
-    > unilaterally: it needs an ADR. See P0-B, "Risks and open questions."
+    - real PHI or PII — member, claim, provider or encounter records (Synthea output and
+      labelled fabricated fixtures are the substitute);
+    - **CPT / HCPCS Level I codes anywhere, including fixtures and tests.** HCPCS Level I
+      _is_ CPT, so "it is only HCPCS" is not a defence. ICD-10-CM and HCPCS Level II are
+      fine;
+    - proprietary payer content — plan documents, medical policy text, contracted rates, or
+      internal system names carried over from prior work;
+    - real credentials;
+    - agent output that reads as _making_ a medical-necessity determination rather than
+      assembling evidence and routing to a clinician.
+
+    The vocabulary ban this rule used to carry is gone, and so is the single-allowed-system-
+    prompt restriction that came with it.
 
 11. **PRD Alignment:** A non-trivial change should name the PRD it implements. If the work
     diverged from the PRD, the PRD is updated in the same pull request — not after, and not
