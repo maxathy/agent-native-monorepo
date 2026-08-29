@@ -3,6 +3,7 @@ import neo4j, { type Driver } from 'neo4j-driver';
 import pg from 'pg';
 import { CypherNeo4jWriter } from '../src/semantic/neo4j/neo4j.writer.js';
 import { PgPgvectorWriter } from '../src/semantic/pgvector/pgvector.writer.js';
+import { EMBEDDING_DIMENSIONS } from '../src/semantic/embedding.js';
 import { skipUnlessIntegrationEnv } from './integration-env.js';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
@@ -103,7 +104,7 @@ describe.skipIf(SKIP)('Semantic Memory (integration)', () => {
 
   describe('PgvectorWriter idempotency', () => {
     it('upserts a fact without creating duplicates', async () => {
-      const embedding = new Array(768).fill(0).map((_, i) => Math.sin(i * 0.01));
+      const embedding = new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin(i * 0.01));
       const fact = {
         contentHash: 'sha256-test-fact-1',
         text: 'LangGraph enables stateful agent workflows.',

@@ -19,6 +19,9 @@ export {
   DrizzleEpisodicRepository,
 } from './episodic/episodic.repo.js';
 
+// Semantic Memory — the embedding dimension every schema and DDL derives from
+export { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, l2Normalize } from './semantic/embedding.js';
+
 // Semantic Memory — Neo4j knowledge graph
 export {
   EntityWriteSchema,

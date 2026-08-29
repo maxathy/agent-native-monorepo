@@ -13,6 +13,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import neo4j from 'neo4j-driver';
+import { EMBEDDING_DIMENSIONS } from '@repo/memory-core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, '..', 'apps', 'agent-service', 'test', 'fixtures');
@@ -85,7 +86,7 @@ try {
     // Seed pgvector facts
     if (seeds.pgvector) {
       for (const fact of seeds.pgvector) {
-        const embedding = new Array(768).fill(0).map((_, i) => Math.sin(i * 0.01));
+        const embedding = new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin(i * 0.01));
         const embeddingStr = `[${embedding.join(',')}]`;
 
         await pool.query(

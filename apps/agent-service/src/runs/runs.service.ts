@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Response } from 'express';
 import type { RunResponse, StreamEvent } from '@repo/agent-contracts';
 import { createLogger } from '@repo/telemetry';
+import { EMBEDDING_DIMENSIONS } from '@repo/memory-core';
 import { ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { buildAgentGraph, type GraphDeps } from '../agent/graph/graph.js';
@@ -113,7 +114,7 @@ export class RunsService {
 
   private createStubDeps(): GraphDeps {
     const stubEmbedding = () =>
-      Promise.resolve(new Array(768).fill(0).map((_, i) => Math.sin(i * 0.01)));
+      Promise.resolve(new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin(i * 0.01)));
 
     return {
       retrieve: {

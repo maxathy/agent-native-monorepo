@@ -6,6 +6,7 @@ import { CypherNeo4jReader } from '../src/semantic/neo4j/neo4j.reader.js';
 import { PgPgvectorWriter } from '../src/semantic/pgvector/pgvector.writer.js';
 import { PgPgvectorReader } from '../src/semantic/pgvector/pgvector.reader.js';
 import { HybridRetrievalFacade } from '../src/semantic/retrieval-facade.js';
+import { EMBEDDING_DIMENSIONS } from '../src/semantic/embedding.js';
 import { skipUnlessIntegrationEnv } from './integration-env.js';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
@@ -85,7 +86,7 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
     // Seed pgvector with test embeddings
     const pgWriter = new PgPgvectorWriter(pgPool);
     const makeEmbedding = (seed: number) =>
-      new Array(768).fill(0).map((_, i) => Math.sin((i + seed) * 0.01));
+      new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin((i + seed) * 0.01));
 
     await pgWriter.upsertFact({
       contentHash: 'sha256-facade-test-1',
@@ -114,7 +115,7 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
   });
 
   it('returns candidates from both Neo4j and pgvector', async () => {
-    const queryEmbedding = new Array(768).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
+    const queryEmbedding = new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
 
     const results = await facade.retrieve({
       queryEmbedding,
@@ -132,7 +133,7 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
   });
 
   it('returns RRF scores in monotonically decreasing order', async () => {
-    const queryEmbedding = new Array(768).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
+    const queryEmbedding = new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
 
     const results = await facade.retrieve({
       queryEmbedding,

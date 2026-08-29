@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { EMBEDDING_DIMENSIONS } from '@repo/memory-core';
 import { buildAgentGraph, type GraphDeps } from './graph.js';
 
 /**
@@ -8,7 +9,7 @@ import { buildAgentGraph, type GraphDeps } from './graph.js';
  * invisible to a type check. Nothing but calling `buildAgentGraph` catches it.
  */
 function makeDeps(): GraphDeps {
-  const embedding = () => Promise.resolve(new Array(768).fill(0));
+  const embedding = () => Promise.resolve(new Array(EMBEDDING_DIMENSIONS).fill(0));
 
   return {
     retrieve: {

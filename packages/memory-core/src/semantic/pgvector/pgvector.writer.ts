@@ -2,13 +2,14 @@ import { z } from 'zod';
 import type pg from 'pg';
 import { getTracer } from '@repo/telemetry';
 import { toSql } from 'pgvector';
+import { EMBEDDING_DIMENSIONS } from '../embedding.js';
 
 const tracer = getTracer('memory-core');
 
 export const FactUpsertSchema = z.object({
   contentHash: z.string(),
   text: z.string(),
-  embedding: z.array(z.number()).length(768),
+  embedding: z.array(z.number()).length(EMBEDDING_DIMENSIONS),
   episodeId: z.string().uuid(),
   sessionId: z.string().uuid(),
 });
