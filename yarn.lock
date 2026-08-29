@@ -2940,6 +2940,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@repo/eval-harness@workspace:packages/eval-harness":
+  version: 0.0.0-use.local
+  resolution: "@repo/eval-harness@workspace:packages/eval-harness"
+  dependencies:
+    "@repo/eslint-config": "workspace:*"
+    "@repo/tsconfig": "workspace:*"
+    "@types/node": "npm:^22.20.1"
+    eslint: "npm:^9.39.5"
+    typescript: "npm:^5.7.0"
+    vitest: "npm:^4.1.11"
+    zod: "npm:^3.24.0"
+  languageName: unknown
+  linkType: soft
+
 "@repo/gateway@workspace:apps/gateway":
   version: 0.0.0-use.local
   resolution: "@repo/gateway@workspace:apps/gateway"

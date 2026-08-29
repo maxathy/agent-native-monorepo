@@ -1,0 +1,70 @@
+import type { Axes, AxisRequirements, Grader } from './types.js';
+
+/**
+ * Reads the two axes from the environment, using exactly the variables the
+ * service switches on.
+ *
+ * There is a second way to end up on a stub without noticing, and it is not
+ * visible from here: Turbo runs in `envMode: strict`, so a task receives only
+ * the variables its `env` array declares. A trial command run through Turbo
+ * without `GOOGLE_API_KEY` in that array sees `undefined` and every trial
+ * silently runs the canned model set — the suite reports on canned strings and
+ * looks identical to one that is working. `turbo.json`'s `eval` task declares
+ * it; `detectAxes` is what makes the consequence visible if it is ever dropped.
+ */
+export function detectAxes(env: NodeJS.ProcessEnv = process.env): Axes {
+  const hasKey = (env['GOOGLE_API_KEY'] ?? '') !== '';
+  const hasStores = (env['DATABASE_URL'] ?? '') !== '' && (env['NEO4J_URI'] ?? '') !== '';
+
+  return {
+    model: hasKey ? 'live' : 'stub',
+    memory: hasStores ? 'live' : 'unconfigured',
+  };
+}
+
+export function describeAxes(axes: Axes): string {
+  return `model=${axes.model} memory=${axes.memory}`;
+}
+
+function unmet(requirements: AxisRequirements, axes: Axes): string[] {
+  const problems: string[] = [];
+  if (requirements.model !== undefined && requirements.model !== axes.model) {
+    problems.push(`model axis is \`${axes.model}\`, needs \`${requirements.model}\``);
+  }
+  if (requirements.memory !== undefined && requirements.memory !== axes.memory) {
+    problems.push(`memory axis is \`${axes.memory}\`, needs \`${requirements.memory}\``);
+  }
+  return problems;
+}
+
+/**
+ * Thrown before any trial runs, never after.
+ *
+ * The alternative — running the grader anyway and letting it observe an empty
+ * store — reports a pass on the no-op writers or a fail on an agent that did
+ * nothing wrong. Both are worse than not running: a suite that grades a stub
+ * without saying so is the failure P2-A shipped and had to be reopened for.
+ */
+export class AxisRequirementError extends Error {
+  constructor(readonly problems: readonly string[]) {
+    super(
+      `eval refused to run: ${problems.length} grader requirement(s) are unmet.\n` +
+        problems.map((p) => `  - ${p}`).join('\n'),
+    );
+    this.name = 'AxisRequirementError';
+  }
+}
+
+/** Collects every unmet requirement so one run reports all of them, not the first. */
+export function assertAxesSatisfy(graders: readonly Grader<never>[], axes: Axes): void {
+  const problems: string[] = [];
+
+  for (const grader of graders) {
+    if (!grader.requires) continue;
+    for (const problem of unmet(grader.requires, axes)) {
+      problems.push(`grader \`${grader.name}\`: ${problem}`);
+    }
+  }
+
+  if (problems.length > 0) throw new AxisRequirementError(problems);
+}
