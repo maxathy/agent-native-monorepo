@@ -77,9 +77,11 @@ It exists to demonstrate architectural thinking in two domains that rarely overl
 1. **Senior monorepo engineering** — Yarn 4 workspaces, Turborepo build orchestration, shared TypeScript configs, and Zod schemas as the single source of truth for every type that crosses a package boundary.
 2. **Production agentic systems** — LangGraph state machines, hybrid symbolic + dense memory retrieval via Neo4j and pgvector, OpenTelemetry instrumentation at the graph-node level.
 
-Not everything in the second list is wired into the request path yet. The retrieval and
-memory adapters are built and tested; connecting them to the service is P2-A. See
-[`docs/STATUS.md`](docs/STATUS.md) before quoting this section back at the code.
+Both lists are wired into the request path. `MemoryModule` constructs the adapters and
+`RunsService` injects them, so a run reads from and writes to Neo4j and pgvector when
+`DATABASE_URL` and `NEO4J_URI` are set, and runs against a stub dependency set when they
+are not. What the repository still lacks is a measurement that the agent behaves — that is
+P1-A. See [`docs/STATUS.md`](docs/STATUS.md) before quoting this section back at the code.
 
 The agent's domain logic is intentionally trivial (a single system prompt: _"You are a helpful research assistant."_). The value is in the chassis — how the pieces connect, how memory is structured, how observability is wired, and how the monorepo scales.
 
