@@ -97,4 +97,46 @@ describe.skipIf(SKIP)('DrizzleEpisodicRepository (integration)', () => {
     const row = rows.find((r) => r.id === id);
     expect(row?.metadata).toEqual({ toolName: 'web-search', durationMs: 450 });
   });
+
+  describe('the (session_id, turn_index) natural key', () => {
+    const replaySession = '550e8400-e29b-41d4-a716-4466554400ff';
+
+    it('lands a replayed turn on the same row', async () => {
+      const first = await repo.write({
+        sessionId: replaySession,
+        runId,
+        turnIndex: 0,
+        role: 'user',
+        content: 'What is LangGraph?',
+      });
+
+      const replayed = await repo.write({
+        sessionId: replaySession,
+        runId,
+        turnIndex: 0,
+        role: 'user',
+        content: 'What is LangGraph?',
+      });
+
+      expect(replayed.id).toBe(first.id);
+      const rows = await repo.findBySession({ sessionId: replaySession });
+      expect(rows).toHaveLength(1);
+    });
+
+    it('does not duplicate a turn re-sent under a different run', async () => {
+      // `reflect` writes the whole client-supplied history, so run 2 of a
+      // session re-writes turn 0 under a fresh run_id. Keyed on run_id this
+      // would return turn 0 once per run.
+      await repo.write({
+        sessionId: replaySession,
+        runId: '550e8400-e29b-41d4-a716-4466554400aa',
+        turnIndex: 0,
+        role: 'user',
+        content: 'What is LangGraph?',
+      });
+
+      const rows = await repo.findBySession({ sessionId: replaySession });
+      expect(rows).toHaveLength(1);
+    });
+  });
 });

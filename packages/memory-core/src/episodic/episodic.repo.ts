@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { episodes } from './schema.js';
 
@@ -29,9 +29,22 @@ export interface EpisodicRepository {
 export class DrizzleEpisodicRepository implements EpisodicRepository {
   constructor(private readonly db: NodePgDatabase) {}
 
+  /**
+   * Writes one turn, idempotently.
+   *
+   * `reflect` writes every message in `state.messages` — the client-supplied
+   * conversation history — so the same turn arrives again on every run of a
+   * session and on every replay of a run. `(session_id, turn_index)` is the
+   * natural key, and first write wins: a client that edits turn 0 and re-sends
+   * the history gets its edit dropped rather than persisted. That is the
+   * defensible behaviour for an append-only log — it records what was first
+   * seen — but it means `episodes` is not a mirror of the client's current
+   * history. P3-B owns revisiting that, because an audit trail is the first
+   * consumer that cares about the difference.
+   */
   async write(input: EpisodeWriteInput): Promise<{ id: string }> {
     const validated = EpisodeWriteInputSchema.parse(input);
-    const [row] = await this.db
+    const [inserted] = await this.db
       .insert(episodes)
       .values({
         sessionId: validated.sessionId,
@@ -41,9 +54,26 @@ export class DrizzleEpisodicRepository implements EpisodicRepository {
         content: validated.content,
         metadata: validated.metadata ?? null,
       })
+      .onConflictDoNothing({ target: [episodes.sessionId, episodes.turnIndex] })
       .returning({ id: episodes.id });
 
-    return { id: row!.id };
+    if (inserted) return { id: inserted.id };
+
+    // DO NOTHING returns no row on conflict. The turn is already persisted, so
+    // report the id it was persisted under — callers treat this as a write that
+    // happened, because from the log's point of view it did.
+    const [existing] = await this.db
+      .select({ id: episodes.id })
+      .from(episodes)
+      .where(
+        and(
+          eq(episodes.sessionId, validated.sessionId),
+          eq(episodes.turnIndex, validated.turnIndex),
+        ),
+      )
+      .limit(1);
+
+    return { id: existing!.id };
   }
 
   async findBySession(
