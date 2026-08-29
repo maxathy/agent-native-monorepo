@@ -60,3 +60,19 @@ export {
   type RetrievalFacade,
   HybridRetrievalFacade,
 } from './semantic/retrieval-facade.js';
+
+// Inspection — reading back what one run persisted, and restoring a session to
+// its seeded state between evaluation trials. The read surface exists so that
+// `packages/eval-harness` can assert against persisted state without opening a
+// pool of its own; see `.agents/reviewer.md` rule 4.
+export {
+  RunInspectionInputSchema,
+  type RunInspectionInput,
+  type RunInspection,
+  type MemoryInspector,
+  PgNeo4jMemoryInspector,
+  SeedStateSchema,
+  type SeedState,
+  type SeedReset,
+  PgNeo4jSeedReset,
+} from './inspect/index.js';
