@@ -34,14 +34,16 @@
 
 ## Testing
 
-Each tier has one command. All of them run in CI except `test:eval`, which is nightly.
+Each tier has one command. Unit, Service, Integration and E2E run in CI; `test:eval` is
+nightly; `eval` is local-only until P1-C wires it into a pipeline.
 
-| Tier        | Runner                 | Command                       | Scope                                           |
-| ----------- | ---------------------- | ----------------------------- | ----------------------------------------------- |
-| Unit        | Vitest                 | `yarn turbo test:unit`        | `packages/` and pure logic in apps — no I/O     |
-| Service     | Jest + @nestjs/testing | `yarn turbo test:service`     | `apps/agent-service` over HTTP, stub graph deps |
-| Integration | Vitest                 | `yarn turbo test:integration` | Real Postgres/Neo4j — never mock a database     |
-| E2E         | Playwright             | `yarn turbo test:e2e`         | Browser against the full `docker compose` stack |
+| Tier        | Runner                 | Command                       | Scope                                            |
+| ----------- | ---------------------- | ----------------------------- | ------------------------------------------------ |
+| Unit        | Vitest                 | `yarn turbo test:unit`        | `packages/` and pure logic in apps — no I/O      |
+| Service     | Jest + @nestjs/testing | `yarn turbo test:service`     | `apps/agent-service` over HTTP, stub graph deps  |
+| Integration | Vitest                 | `yarn turbo test:integration` | Real Postgres/Neo4j — never mock a database      |
+| E2E         | Playwright             | `yarn turbo test:e2e`         | Browser against the full `docker compose` stack  |
+| Eval        | `@repo/eval-harness`   | `yarn eval`                   | Live agent trials, real model calls, real stores |
 
 - **Service tests need `--experimental-vm-modules`**, which the `test:service` script
   already carries. Jest's ESM support requires it, and without it every import in a spec
@@ -51,6 +53,20 @@ Each tier has one command. All of them run in CI except `test:eval`, which is ni
 - **Service tests must not depend on ambient environment.** `RunsService` picks live Gemini
   dependencies over stubs whenever `GOOGLE_API_KEY` is set, so a spec that does not clear
   it passes or fails according to the developer's shell.
+- **The eval tier is not a test runner and does not pretend to be one.** `yarn eval` is
+  `turbo eval`, which runs `node dist/eval/run-eval.js` in `apps/agent-service`: it boots
+  the real application context, runs n trials per task against live stores, and writes
+  JSON, JUnit XML and a Markdown summary. The package's own unit tests are Vitest like
+  everything else; the trials are not, because they hold one Nest context across every
+  trial and their output is three report files rather than a pass/fail line.
+- **`packages/eval-harness` must not declare a `test:eval` script.** `agent-eval.yml` runs
+  `yarn turbo test:eval` across every workspace, so declaring one there silently makes the
+  nightly job run the trial suite on whatever axes that runner happens to have. P1-C owns
+  that switch.
+- **A turbo task that runs trials declares `GOOGLE_API_KEY` in its `env` array.** Turbo runs
+  in `envMode: strict` — the 2.x default — so a task receives only the variables it names.
+  Without the declaration every trial runs the canned model set, the suite reports on
+  canned strings, and it looks identical to one that is working.
 - **E2E runs against the compose stack, not the dev server.** Bring it up with
   `docker compose --profile full up -d --build --wait`, then run the suite with
   `E2E_BASE_URL=http://localhost:8080`. Without that variable Playwright boots the Vite dev

@@ -2,7 +2,7 @@
 id: P1-A
 title: packages/eval-harness — evaluation as a first-class package
 tier: 1
-status: accepted
+status: shipped
 size: L
 depends_on: [P0-A, P2-A]
 blocks: [P1-B, P1-C, P1-D, P1-E, P1-F, P2-B]
@@ -276,39 +276,73 @@ graph.
 
 ## Acceptance criteria
 
-- [ ] `packages/eval-harness` exists, builds, typechecks, lints, and is listed by
+- [x] `packages/eval-harness` exists, builds, typechecks, lints, and is listed by
       `yarn workspaces list`. (The root `workspaces` array is a glob, `packages/*`, so
       resolution is the check — there is no array entry to add.)
-- [ ] `Task`, `Trial`, `Transcript`, `Outcome`, `Grader`, `Score`, and `Suite` are exported
+- [x] `Task`, `Trial`, `Transcript`, `Outcome`, `Grader`, `Score`, and `Suite` are exported
       from the package root.
-- [ ] `run-fixture-001.json` is migrated to a `Task`, its three dormant assertions run as
+- [x] `run-fixture-001.json` is migrated to a `Task`, its three dormant assertions run as
       code graders, and `node scripts/seed-eval-fixtures.mjs` still reports seeding it —
       verified by a row count, not by the script's exit code.
-- [ ] At least one code grader asserts against persisted state — that `reflect` wrote an
+- [x] At least one code grader asserts against persisted state — that `reflect` wrote an
       episodic row and MERGEd an entity — reading through `packages/memory-core` rather than
       its own connection.
-- [ ] That grader is verified on the live memory axis: `DATABASE_URL` and `NEO4J_URI` set,
+- [x] That grader is verified on the live memory axis: `DATABASE_URL` and `NEO4J_URI` set,
       against the same run's `runId`. On the unconfigured axis the harness refuses to run it
       rather than passing it.
-- [ ] The suite is verified once end to end on the live model axis, with `GOOGLE_API_KEY`
+- [x] The suite is verified once end to end on the live model axis, with `GOOGLE_API_KEY`
       reaching the trial process, and the command that runs trials declares it wherever
       Turbo would otherwise strip it.
-- [ ] The runner executes n trials per task and reports `pass@k` and `pass^k`.
-- [ ] A trajectory grader reports precision and recall over the node sequence and over the
+- [x] The runner executes n trials per task and reports `pass@k` and `pass^k`.
+- [x] A trajectory grader reports precision and recall over the node sequence and over the
       tool-call sequence, and an errored tool call counts as a call that did not succeed.
-- [ ] A model grader refuses to run same-family judging without explicit opt-in.
-- [ ] `yarn eval` runs the suite locally and writes JSON, JUnit XML, and a Markdown summary.
+- [x] A model grader refuses to run same-family judging without explicit opt-in.
+- [x] `yarn eval` runs the suite locally and writes JSON, JUnit XML, and a Markdown summary.
       No `test:eval` script is declared in this package.
-- [ ] `Score.value`, `.label` and `.explanation` map one-to-one onto
+- [x] `Score.value`, `.label` and `.explanation` map one-to-one onto
       `gen_ai.evaluation.score.value`, `.score.label` and `.explanation`, and `Grader.name`
       supplies the required `gen_ai.evaluation.name`.
-- [ ] `.context/conventions.md` gains an `Eval` row in the testing table naming the runner
+- [x] `.context/conventions.md` gains an `Eval` row in the testing table naming the runner
       and the command.
-- [ ] `apps/agent-service` gets a `vitest.config.ts` that excludes `dist`, and
+- [x] `apps/agent-service` gets a `vitest.config.ts` that excludes `dist`, and
       `yarn workspace @repo/agent-service vitest list` reports each unit test once. This
       closes the runner-configuration half of P0-A's Jest/Vitest non-goal; the service tier
       stays on Jest.
-- [ ] The package README states the current pass rate and does not round it up.
+- [x] The package README states the current pass rate and does not round it up.
+
+### Where the delivery diverged from the design above
+
+Recorded here rather than by editing the design, because the design is the argument that
+was reviewed and the divergences are the part a reader needs to see.
+
+- **The trial runner is a Node program, not Vitest.** The design said "Runner is Vitest,
+  consistent with the unit and integration tiers." The package's own unit tests are Vitest;
+  the trials are `node dist/eval/run-eval.js`, because a trial run holds one Nest
+  application context across every trial and its output is three report files rather than a
+  pass/fail line — and because a Vitest suite in this package is one `package.json` edit
+  away from the `test:eval` script the non-goals forbid.
+- **`Outcome` is a snapshot the adapter captures, not a live connection graders hold.**
+  `AgentHarness.captureOutcome` reads the stores through `memory-core`'s `inspectRun` and
+  hands graders plain data. It keeps the package free of a database dependency, and it puts
+  the numbers a grader judged into the JSON report, so a disputed result is re-read rather
+  than re-run — which for a suite of live model calls is the difference between an argument
+  and a bill.
+- **`Grader` gained a `requires` field.** The interface as drafted had nowhere to say "this
+  grader is only meaningful on a live memory axis," which is the refusal the fifth criterion
+  asks for.
+- **Trajectory metrics are five named graders, not one.** `gen_ai.evaluation.name` is the
+  metric name, so one grader emitting five numbers would not map onto the event this package
+  is shaped for. Each metric carries a threshold declared in the task file, and a threshold
+  of `0` reports a metric without gating on it — which is how node precision is published
+  despite falling with every extra `act` iteration.
+- **A second task was added.** The risks say a 100% pass rate means the suite is too easy.
+  `memory-recall-001` passes everything on both axes, so `tool-use-001` grades whether the
+  agent reaches for the one tool it has. It does not, on either axis, and that is what takes
+  the suite off 100%.
+- **`PgNeo4jSeedManager` applies a seed as well as restoring to one.** Deleting alone leaves
+  a two-task suite unrepeatable: the Neo4j half of the reset is database-wide, because
+  neither `:Concept` nor `:Fact` carries a session, so one task's reset takes another task's
+  concepts with it.
 
 ## Risks and open questions
 
@@ -353,10 +387,21 @@ graph.
   checkpointer's own tables are outside `runMigrations` and are created by
   `PostgresSaver.setup()`; each run mints a fresh `thread_id`, so they accumulate rather
   than interfere, and the reset can leave them alone.
-- **Open question:** whether to depend on LangSmith's Vitest integration for the backend or
-  keep the package standalone with pluggable reporters. Standalone first — it keeps the
-  package honest about what it computes itself — with a LangSmith reporter as a later
-  addition. Worth revisiting once P1-D needs baseline storage.
+- **Open question, settled:** standalone with pluggable reporters, no LangSmith dependency.
+  Worth revisiting once P1-D needs baseline storage.
+- **`tool-use-001` has not run on the live model axis.** It was written after the live
+  verification of `memory-recall-001`, and the key's free-tier quota for `gemini-2.5-flash`
+  `generateContent` is 20 requests, which a 5×2 suite exhausts in its first task. The
+  package README says which axes produced each number rather than presenting the stub-axis
+  rate as the suite's.
+- **`IO_RETRY` does not retry a 429, and a rate-limited free tier is exactly where a retry
+  would help.** `isClientError` treats every 4xx as terminal on the reasoning that "a
+  malformed request, a rejected key or a missing model is not going to succeed on attempt
+  three" — true of 400, 401 and 404, false of 429, which comes with a `Please retry in Ns`
+  hint. Today it takes down the whole suite. **P1-C owns it**, because it is the PRD that
+  runs evaluation in CI, where the same quota applies and the blast radius is a nightly job
+  rather than a laptop. Noted here rather than fixed, because changing the retry predicate
+  is a change to production behaviour outside this PRD's criteria.
 - **Vitest in `apps/agent-service` collects `dist/` as well as `src/`.** `test:unit` runs
   every unit test twice — `vitest list` reports 46 tests where 23 are distinct, once from
   `src/agent/graph/edges.test.ts` and again from the compiled

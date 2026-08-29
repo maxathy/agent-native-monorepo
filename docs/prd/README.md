@@ -105,28 +105,56 @@ convention now separates throwing from swallowing — I/O nodes throw, and conta
 happens once at the graph boundary, which for a stream means a terminal `StreamEvent.error`
 frame because the response is already committed.
 
-**P1-A is `accepted` and is the PRD in progress.** Its blocking
-risk is gone — P2-A shipped, so its fourth criterion asserts against writes that actually
-happen — but the review found two live ways for the suite to grade a stub without saying
-so, which is the failure P2-A shipped and had to reopen for. One is that the no-op writers
-are still reachable whenever the memory axis is unconfigured. The other is new: Turbo runs
-in `envMode: strict` and `turbo.json` declares no `GOOGLE_API_KEY` for `test:eval`, so a
-task run through Turbo sees it as `undefined` and every trial silently runs the canned
-model set. Both are now criteria that name the axis they must be checked on.
+**P1-A is shipped, and the repository now measures its agent.** `packages/eval-harness`
+holds the vocabulary — `Task`, `Trial`, `Transcript`, `Outcome`, `Grader`, `Score`, `Suite`
+— and `yarn eval` runs n trials per task against the real Nest application context, so a
+trial exercises the same `MemoryModule` providers, model axis and checkpointer a request
+would. Two tasks, eleven graders, three reporters. `run-fixture-001.json` is a task rather
+than a file nothing read: its three dormant assertions are named graders, and the seed
+script follows the dataset by importing `EVAL_DATASETS_DIR` instead of spelling a path that
+could go stale.
 
-The review also found the migrated fixture cannot exercise the graph. `expandFromSeeds`
-returns `:Fact` nodes reached through `MENTIONS`, which is ADR 0004's change; the seed
-script writes only `:Concept` and `RELATES_TO`. A task seeded from `run-fixture-001.json`
-is a vector-path task and the PRD now says so rather than letting a reader assume otherwise.
-P1-A was accepted on 2026-08-29 on the strength of that review, which is commit `807b1ae`
-and reads as the diff that produced this decision. The four judgement calls it records —
-outcome graders reading through `memory-core`, the Jest/Vitest split left standing, no
-`test:eval` script in the package, and the `Eval` convention row deferred to delivery — are
-what acceptance endorses. Reversing any of them is an edit to the criteria, not a reopen.
+**The graders that matter read the database, and they refuse to guess.** `reflect` writing
+the episode and MERGEing the entity is asserted from `episodes`, `semantic_facts` and the
+graph, through a new read surface in `memory-core` rather than SQL in the harness. Each such
+grader declares `requires: { memory: 'live' }`, and an unmet requirement stops the suite
+before the first trial — no pass is ever earned against the no-op writers. `turbo.json`'s
+`eval` task declares `GOOGLE_API_KEY`, confirmed by `turbo run eval --dry=json`, so strict
+env mode cannot quietly swap in the canned model set.
 
-**P2-B is the other candidate.** ADR 0002 is provisional until its ablation measures
-whether hybrid beats either store alone, and that measurement is only meaningful now that
-fusion fuses. It is downstream of P1-A's `Grader` interface, so the order is not free.
+**Measured, per axis, on 2026-08-29.** Model `stub` / memory `live`, 5 trials × 2 tasks:
+50%, with `memory-recall-001` at 5/5 and `tool-use-001` at 0/5. Model `live` / memory
+`live`, one trial of `memory-recall-001`: all eleven graders passed, 2 `episodes` rows, 17
+`semantic_facts` rows, 17 `:Fact` nodes and 38 of 38 extracted concepts in the graph. The
+second task has not run on the live model axis — the key's free-tier quota for
+`gemini-2.5-flash` is 20 `generateContent` requests and a 5×2 suite needs about forty — and
+the README says so rather than presenting the stub rate as the suite's.
+
+**The suite is deliberately not at 100%.** `tool-use-001` asks whether the agent reaches for
+the one tool it has. It does not, on either axis: `selectTool` returns `null`, so `act`
+completes in one iteration and never calls `web-search`. That is a real behaviour with a
+number on it, which is the whole point of having a measurement instead of an anecdote.
+
+**Two things came out of implementation that reading had not.** `RunResponse` carries no
+node sequence and no tool calls, so scoring a trajectory needed `RunsService.executeTraced`
+— the graph streamed rather than invoked, with the updates folded back into a final state.
+And `restoreToSeed` alone makes a two-task suite unrepeatable: the Neo4j half is
+database-wide, because neither `:Concept` nor `:Fact` carries a session, so one task's reset
+takes another task's concepts with it. Every reset now applies the seed as well as restoring
+to it.
+
+**One defect is named and left to P1-C.** `IO_RETRY` treats every 4xx as terminal, and a 429
+is not: it arrives with a "please retry in N seconds" hint and today it takes down the whole
+suite. Fixing the retry predicate is a production behaviour change outside P1-A's criteria,
+and P1-C is the PRD that runs evaluation in CI, where the same quota applies.
+
+**P1-C and P2-B are the candidates, and P1-C is the stronger one.** P1-C replaces the
+nightly stub with a tiered pipeline, which is what turns `yarn eval` from a command someone
+remembers to run into a signal; it also owns the 429 defect above and retiring
+`memory-core`'s `test:eval` alias. P2-B is the other: ADR 0002 is provisional until its
+ablation measures whether hybrid beats either store alone, and that measurement is only
+meaningful now that fusion fuses. Both are unblocked — P1-A shipped the `Grader` interface
+they build on.
 
 **Three documents outlived P2-A and have been corrected.** `README.md` still told a reader
 the memory adapters were not wired and pointed at P2-A as outstanding; `.env.example` still
@@ -180,18 +208,20 @@ standing rule in `.context/conventions.md`, not a piece of work.
 
 ## Tier 1 — Evaluation in CI
 
-The repository's stated thesis. Today `.github/workflows/agent-eval.yml` runs
-`yarn turbo test:eval`, which resolves to a single integration suite in
-`packages/memory-core` that never invokes the agent.
+The repository's stated thesis. P1-A is shipped: `yarn eval` runs live trials against the
+real application context and reports `pass@k` and `pass^k` per axis. What is still true is
+that `.github/workflows/agent-eval.yml` runs `yarn turbo test:eval`, which resolves to a
+single integration suite in `packages/memory-core` that never invokes the agent — P1-C owns
+replacing it.
 
-| ID                           | Title                                                         | Size | Status   |
-| ---------------------------- | ------------------------------------------------------------- | ---- | -------- |
-| [P1-A](P1-A-eval-harness.md) | `packages/eval-harness` — evaluation as a first-class package | L    | accepted |
-| P1-B                         | `packages/agent-cassette` — decision-level record and replay  | M    | draft    |
-| P1-C                         | Tiered evaluation pipeline replacing the nightly stub         | M    | draft    |
-| P1-D                         | Statistical regression gate with paired bootstrap             | M    | draft    |
-| P1-E                         | Model-drift canary against pinned and floating model ids      | S    | draft    |
-| P1-F                         | Cost, latency, and step budgets as CI assertions              | S    | draft    |
+| ID                           | Title                                                         | Size | Status  |
+| ---------------------------- | ------------------------------------------------------------- | ---- | ------- |
+| [P1-A](P1-A-eval-harness.md) | `packages/eval-harness` — evaluation as a first-class package | L    | shipped |
+| P1-B                         | `packages/agent-cassette` — decision-level record and replay  | M    | draft   |
+| P1-C                         | Tiered evaluation pipeline replacing the nightly stub         | M    | draft   |
+| P1-D                         | Statistical regression gate with paired bootstrap             | M    | draft   |
+| P1-E                         | Model-drift canary against pinned and floating model ids      | S    | draft   |
+| P1-F                         | Cost, latency, and step budgets as CI assertions              | S    | draft   |
 
 ## Tier 2 — Make the architecture real
 
@@ -245,8 +275,8 @@ P0-A ──▶ P2-A ──┬──▶ P1-A ──▶ P1-B ──▶ P1-C ──
                 └──▶ P4-C
 ```
 
-P2-A is shipped, so everything hanging off it is unblocked. P1-A also blocks P2-B: the
-ablation needs both a working retrieval path and a harness to measure it with.
+P2-A and P1-A are both shipped, so everything hanging off them is unblocked — including
+P2-B, whose ablation needs both a working retrieval path and a harness to measure it with.
 
 `P0-B`, `P2-C`, `P3-A`, `P3-C`, `P4-A`, `P4-B`, `P5-A`, `P5-B`, and `P5-C` have no hard
 predecessors and can be picked up whenever they are the most valuable next thing. P5-C
