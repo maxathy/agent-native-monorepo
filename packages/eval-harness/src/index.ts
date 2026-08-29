@@ -63,3 +63,11 @@ export {
   type TrajectoryReference,
   type TrajectoryStep,
 } from './graders/trajectory.js';
+
+// Runner.
+export { EvalHarness, type EvalHarnessOptions } from './harness.js';
+
+// Reporters.
+export { renderJsonReport } from './reporters/json.js';
+export { renderJUnitReport } from './reporters/junit.js';
+export { renderMarkdownSummary } from './reporters/summary.js';
