@@ -105,11 +105,33 @@ convention now separates throwing from swallowing — I/O nodes throw, and conta
 happens once at the graph boundary, which for a stream means a terminal `StreamEvent.error`
 frame because the response is already committed.
 
-**Suggested next step: P1-A.** It is the stated thesis and the one a reader came for, and
-it is no longer downstream of a stub — its fourth acceptance criterion asserts that
-`reflect` wrote an episodic row and MERGEd an entity, and both now happen. P2-B is the
-other candidate: ADR 0002 is provisional until its ablation measures whether hybrid beats
-either store alone, and that measurement is only meaningful now that fusion fuses.
+**P1-A has been reviewed at HEAD and is still `draft`, awaiting sign-off.** Its blocking
+risk is gone — P2-A shipped, so its fourth criterion asserts against writes that actually
+happen — but the review found two live ways for the suite to grade a stub without saying
+so, which is the failure P2-A shipped and had to reopen for. One is that the no-op writers
+are still reachable whenever the memory axis is unconfigured. The other is new: Turbo runs
+in `envMode: strict` and `turbo.json` declares no `GOOGLE_API_KEY` for `test:eval`, so a
+task run through Turbo sees it as `undefined` and every trial silently runs the canned
+model set. Both are now criteria that name the axis they must be checked on.
+
+The review also found the migrated fixture cannot exercise the graph. `expandFromSeeds`
+returns `:Fact` nodes reached through `MENTIONS`, which is ADR 0004's change; the seed
+script writes only `:Concept` and `RELATES_TO`. A task seeded from `run-fixture-001.json`
+is a vector-path task and the PRD now says so rather than letting a reader assume otherwise.
+Accepting P1-A means setting `status: accepted` in its frontmatter and in the row below,
+after which `/prd P1-A` implements it.
+
+**P2-B is the other candidate.** ADR 0002 is provisional until its ablation measures
+whether hybrid beats either store alone, and that measurement is only meaningful now that
+fusion fuses. It is downstream of P1-A's `Grader` interface, so the order is not free.
+
+**Three documents outlived P2-A and have been corrected.** `README.md` still told a reader
+the memory adapters were not wired and pointed at P2-A as outstanding; `.env.example` still
+warned that setting `GOOGLE_API_KEY` breaks `POST /runs` via a retired embedding model; and
+`docs/STATUS.md`'s closing prose still described eight of its own `implemented` rows as
+pending work. The matrix rows were right and the prose around them was stale, which is the
+failure mode `.context/conventions.md:69` exists to catch and did not, because nothing
+lints prose.
 
 **Tier 3 is unblocked.** `.agents/reviewer.md` rule 10 used to forbid medical and clinical
 terminology, which ruled out the payer-domain vertical. [ADR
