@@ -2,7 +2,7 @@
 id: P2-A
 title: Wire memory-core into the service; add checkpointing and retry
 tier: 2
-status: draft
+status: accepted
 size: L
 depends_on: [P0-A]
 blocks: [P1-A, P2-B, P3-B, P4-C]
@@ -28,11 +28,16 @@ Seven further facts follow from it, each verified at HEAD:
    `packages/memory-core/test/episodic.integration.test.ts:24`; `semantic_facts` is created
    in two integration tests, in `scripts/seed-eval-fixtures.mjs:37`, and by
    `PgPgvectorWriter.ensureTable` (`pgvector.writer.ts:24-35`), which nothing calls outside
-   tests. Four hand-rolled copies of two tables.
-2. **The embedding dimension is a literal in five places.** `pgvector.writer.ts:11` (Zod),
+   tests. Five hand-rolled copies of two tables: four of `semantic_facts`, one of
+   `episodes`.
+2. **The embedding dimension is a literal in six places on the application path, and
+   thirteen across the repository.** `pgvector.writer.ts:11` (Zod),
    `pgvector.writer.ts:29` (DDL), `retrieval-facade.ts:6` (Zod),
    `scripts/seed-eval-fixtures.mjs:40` (DDL) and `:88` (fixture vectors), plus the stub
-   embedding at `runs.service.ts:116`. The model that produced 768,
+   embedding at `runs.service.ts:116`. Seven more are in test files — `graph.test.ts:11`,
+   `semantic.integration.test.ts:31,106` and
+   `retrieval-facade.integration.test.ts:37,88,117,135`. The acceptance criterion below is
+   repo-wide, so all thirteen are in scope. The model that produced 768,
    `text-embedding-004` (`runs.service.ts:34`), is retired for `embedContent`, so
    `POST /runs` returns 500 whenever `GOOGLE_API_KEY` is set.
 3. **The graph compiles with no checkpointer and no retry.** `graph.ts:64` is
@@ -79,6 +84,15 @@ review:
   this, because it goes through the gateway, which mints one at
   `apps/gateway/src/middleware/correlation-id.middleware.ts:5`. Port 3000 is documented as a
   service URL in the README's Full-Stack Docker table and has no such middleware.
+
+  The service is one line short, not missing the concept. `LoggingInterceptor` already
+  mints an id when the header is absent (`logging.interceptor.ts:16`), sets it as the
+  response `x-correlation-id` header (`:20`), stores it on `req.correlationId` (`:23`) and
+  runs the handler inside `runWithCorrelationId` (`:26`). The one thing it does not do is
+  write it back to `req.headers`, which is exactly what the gateway middleware does at
+  `correlation-id.middleware.ts:7`. So `@Headers('x-correlation-id')` in
+  `runs.controller.ts:19` still binds `undefined` while a perfectly good id sits on the
+  same request.
 
 ## Why it matters
 
@@ -187,9 +201,29 @@ Two mechanisms, because there are two stores and the checkpointer owns a third s
   `MERGE` without a uniqueness constraint is not safe under concurrency — two concurrent
   transactions can each create the node.
 
-The episodic natural key is `(run_id, turn_index)`, and the write becomes
-`ON CONFLICT (run_id, turn_index) DO NOTHING`. `session_id` is not part of it: a turn
-belongs to exactly one run, and a replayed run must land on the same row.
+The episodic natural key is `(session_id, turn_index)`, and the write becomes
+`ON CONFLICT (session_id, turn_index) DO NOTHING`. `run_id` stays as a column, recording
+which run first persisted the turn, but it is not part of the key.
+
+`(run_id, turn_index)` was the first answer, on the premise that a turn belongs to exactly
+one run. That premise is false in this codebase. `reflect.node.ts:44-54` writes _every_
+message in `state.messages`, which is the client-supplied conversation history, so run 2 of
+a session re-writes turn 0 under a fresh `run_id`. Keyed on `run_id`, `findBySession`
+(`episodic.repo.ts:50-59`, which filters on `session_id` alone) returns turn 0 N times
+after N runs. Episodic memory is specified as "full turn history"
+(`.context/architecture.md:61`); returning the same turn once per run is not that.
+
+Keying on `session_id` also satisfies replay-identity strictly more strongly than keying on
+`run_id` did: the same turn lands on the same row within a run, across a resumed run, and
+across a re-send. Nothing in the app calls `findBySession` today, so this breaks nothing
+now — it is cheaper to get right before a caller exists than after.
+
+**Accepted consequence:** with `DO NOTHING`, first write wins. A client that edits turn 0
+and re-sends the history gets its edit dropped rather than persisted. For an append-only
+episodic log that is the defensible behaviour — the log records what was first seen — but
+it means `episodes` is not a mirror of the client's current history. **P3-B owns
+revisiting this**, because an audit trail is the first consumer that cares about the
+difference.
 
 ### Embedding dimension, and why it is the same decision as the HNSW index
 
@@ -249,9 +283,21 @@ const compiled = buildAgentGraph(deps, body, correlationId);
 const result = await compiled.invoke({ runId }, { configurable: { thread_id: runId } });
 ```
 
-`ingressNode` takes `state.runId` instead of minting one. The same call site defaults the
-correlation id — `correlationId || randomUUID()` — which closes the 500-on-missing-header
-defect at its source rather than in the controller signature.
+`ingressNode` takes `state.runId` instead of minting one.
+
+The correlation-id defect is **not** fixed here. Defaulting it at this call site with
+`correlationId || randomUUID()` would mint a _second_ id, disagreeing with the one already
+in the response header, the log line and the `AsyncLocalStorage` context — one request,
+two ids, which is worse than the 500. The fix is one line in `LoggingInterceptor`,
+mirroring `apps/gateway/src/middleware/correlation-id.middleware.ts:7`:
+
+```ts
+// logging.interceptor.ts, beside the existing res.setHeader and req.correlationId writes
+req.headers['x-correlation-id'] = correlationId;
+```
+
+The interceptor stays the single place an id is minted, and every consumer — header,
+logger, ALS, `@Headers()` — sees the same value.
 
 ### Splitting the LLM call out of the write
 
@@ -303,6 +349,40 @@ no I/O. `retryOn` excludes validation failures and 4xx model errors — retrying
 request three times spends latency to reach the same answer. `retryPolicy` is available on
 `addNode` at the pinned `@langchain/langgraph@0.4.10`
 (`node_modules/@langchain/langgraph/dist/graph/state.d.ts:22`), so this needs no upgrade.
+
+**This collides with a written convention, and the convention is the thing that has to
+move.** `.context/conventions.md:90-93` says "Containing failure inside the node is the
+intent," names `retrieve` and `reflect` propagating I/O errors as the gap, and tells the
+next reader not to widen it. A `retryPolicy` only ever fires on a thrown error: a node that
+catches its own I/O failure and returns `Partial<AgentState>` makes `retryOn` unreachable
+and the policy a decoration. Left as is, the next session closes the "gap" in good faith
+and silently deletes retry.
+
+The convention is right about the outcome and wrong about the mechanism. This PRD amends it
+to draw the line where it belongs: **I/O nodes throw so the policy can see the failure;
+containment happens once, at the graph boundary**, where an exhausted retry becomes a run
+with a failed `outcome`, a terminal SSE frame, and a checkpoint left intact for resume —
+never an unhandled rejection. Contained is not the same as swallowed, and the current
+wording does not distinguish them.
+
+### The stream error frame
+
+`StreamEventSchema` (`run-response.schema.ts:19-31`) is `{ node, delta?, state? }` — no
+error channel — so "a terminal SSE frame identifying the failure" is a contract change, not
+an implementation detail. `StreamEvent` gains an optional `error`:
+
+```ts
+error: z.object({ node: z.string(), message: z.string() }).optional(),
+```
+
+Overloading `node` with a sentinel value was the alternative and is rejected: an implicit
+protocol carried in a `z.string()` is exactly the kind of thing a reader has to run the
+code to discover.
+
+The reason this needs saying out loud is `docs/STATUS.md` row 14, which already records
+`delta` and `state` as declared in the schema and emitted zero times. Adding a third
+never-emitted optional field would make that row worse. So the acceptance criterion below
+requires an **observed** frame, not a declared field, and row 14 shrinks rather than grows.
 
 ### What "atomic" becomes
 
@@ -395,8 +475,9 @@ apps/agent-service/src/
 - [ ] Running the same `runId` through `reflect` twice produces one `episodes` row per
       turn, one `:Concept` per entity, and one `semantic_facts` row per fact.
 - [ ] `\d semantic_facts` on a migrated database shows an HNSW index on `embedding`.
-- [ ] `SHOW CONSTRAINTS` on a bootstrapped Neo4j lists uniqueness constraints on
-      `:Concept(id)` and `:Fact(contentHash)`.
+- [ ] `SHOW CONSTRAINTS` on a bootstrapped Neo4j lists a uniqueness constraint on
+      `:Concept(id)`, and — _unless the fusion work is split to P2-D_ — on
+      `:Fact(contentHash)`.
 - [ ] The literal `768` appears in no `.ts` or `.mjs` file outside
       `packages/memory-core/src/semantic/embedding.ts`.
 - [ ] With `GOOGLE_API_KEY` set, `POST /runs` returns 200 and a `RunResponse`, and the
@@ -407,9 +488,9 @@ apps/agent-service/src/
       `thread_id` completes the run with one model call in `distill`, not two.
 - [ ] Every node that performs I/O is registered with a `retryPolicy`; a `retrieve` whose
       Neo4j driver fails twice and succeeds on the third attempt yields a successful run.
-- [ ] A fact reachable from a seed concept in Neo4j and returned by pgvector for the same
-      query appears once in `retrievedContext`, with a score equal to the sum of its two
-      reciprocal ranks.
+- [ ] _(Moves to P2-D if the fusion work is split out — see Risks.)_ A fact reachable from
+      a seed concept in Neo4j and returned by pgvector for the same query appears once in
+      `retrievedContext`, with a score equal to the sum of its two reciprocal ranks.
 - [ ] A run in session A does not retrieve a `semantic_facts` row written in session B,
       unless `crossSession` is set.
 - [ ] A request with `config: { topK: 3, hopDepth: 1 }` produces a
@@ -421,14 +502,22 @@ apps/agent-service/src/
 - [ ] `RunResponse.messages` contains the assistant turn, and `reflect` writes it to
       `episodes`.
 - [ ] `POST /runs` with no `x-correlation-id` header returns 200, and the response's
-      correlation id is a generated UUID.
-- [ ] A node failure during `POST /runs/stream` emits a terminal SSE frame identifying the
-      failure and closes the stream; the log contains no `ERR_HTTP_HEADERS_SENT`.
-- [ ] `docs/STATUS.md` rows 1, 2, 3, 6, 13, 15 and 16 are `implemented` with evidence that
+      `x-correlation-id` header is a generated UUID that also appears in the run's log
+      lines. (`RunResponse` has no correlation-id field and does not gain one — the header
+      is the transport, and widening the response contract is not in this PRD's scope.)
+- [ ] A node failure during `POST /runs/stream` emits a terminal SSE frame carrying
+      `error: { node, message }` and closes the stream; the log contains no
+      `ERR_HTTP_HEADERS_SENT`. The frame is asserted from an observed response, not from
+      the schema, and `docs/STATUS.md` row 14 is updated to record `error` as emitted.
+- [ ] `docs/STATUS.md` rows 1, 2, 3, 6, 13 and 16 are `implemented` with evidence that
       resolves, and row 4's capability text states convergence under replay rather than
-      atomicity.
+      atomicity. Row 15 moves to `implemented` here, or to P2-D's ownership if the fusion
+      work is split.
 - [ ] `.agents/memory-author.md`'s episodic guidance describes the natural key, and
       `:Session` is gone from `README.md` and `.context/architecture.md`.
+- [ ] `.context/conventions.md:90-93` distinguishes throwing from swallowing, so that a
+      later reader "fixing" `retrieve` or `reflect` to contain their own I/O errors cannot
+      turn the retry policy into a no-op without contradicting the written convention.
 - [ ] `yarn turbo typecheck`, `yarn turbo lint`, `yarn lint:docs` and `yarn format:check`
       pass.
 
@@ -445,17 +534,30 @@ apps/agent-service/src/
   `gemini-embedding-001` accepts `outputDimensionality` and returns a truncatable
   Matryoshka embedding is from its documentation, not from a call — this repository has no
   API key. If it is wrong, the `halfvec(3072)` fallback above applies and the HNSW criterion
-  still holds. **Confirm with a live key before starting; it is a ten-minute check that
-  changes a migration.**
-- **Splitting `distill` out of `reflect` is the decision most worth arguing with.** It adds
-  a node to public vocabulary — SSE `StreamEvent.node`, the `agent.node.*` span name, the
-  console's colour map, the topology diagrams in `README.md` and `.context/architecture.md`
-  — to buy replay-identical writes. The cheaper alternative is one `reflect` node with a
-  `retryPolicy`, accepting that a retry spends a second model call and may MERGE a slightly
-  different entity set; nothing corrupts, because every write is idempotent, but "retry is
-  safe" becomes "retry is safe and costs a model call." **I recommend the split and would
-  like it confirmed at review**, because it is the difference between a retry policy that
-  is defensible under questioning and one that is not.
+  still holds. **This is the first task of implementation, not a background assumption:**
+  one `curl` to `models/gemini-embedding-001:embedContent` with `outputDimensionality: 768`,
+  and record the observed vector length in this PRD before writing the migration. It is a
+  ten-minute check that decides a column type, and a migration is the most expensive thing
+  here to get wrong.
+- **Splitting `distill` out of `reflect` is decided — and the draft undersold why.** It
+  adds a node to public vocabulary — SSE `StreamEvent.node`, the `agent.node.*` span name,
+  the console's colour map, the topology diagrams in `README.md` and
+  `.context/architecture.md`. The draft argued the cheaper alternative merely "costs a model
+  call," since every write is idempotent. That is idempotency **per write**, which is not
+  convergence **per node**. `reflect` derives its pgvector key from the extracted text
+  (`reflect.node.ts:81`: `sha256(fact.text)`). If attempt 2 extracts a fact worded even
+  slightly differently, its hash differs, the upsert has nothing to collapse onto, and the
+  row lands _in addition to_ attempt 1's. Same for a `:Concept` id the model renders
+  differently on the second pass. Retry on the current `reflect` is not convergent, so a
+  `retryPolicy` on it does not deliver the guarantee "What atomic becomes" claims. That is
+  a correctness argument, not an aesthetic one, and it is why the split is in scope rather
+  than deferred.
+
+  One mechanical note for the implementer: `shouldContinueActing` (`edges.ts:3`) returns
+  `'act' | 'reflect'`. Change the return type and the literal to `'act' | 'distill'` and add
+  a plain `distill → reflect` edge. Keeping the conditional-edge key as `reflect` while
+  mapping it to the `distill` node would work and would be the next reader's trap.
+
 - **Making RRF fuse is the largest single item and the most separable.** `:Fact` nodes, a
   new relationship, a changed reader query, a changed candidate shape in two packages, and
   the fixture and seed script that follow. If this PRD needs to be cut, that is the piece

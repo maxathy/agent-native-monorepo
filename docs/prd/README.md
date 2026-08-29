@@ -2,7 +2,7 @@
 
 ## Where things stand
 
-_Last updated 2026-08-28. If this section is more than a few weeks stale, trust the code
+_Last updated 2026-08-29. If this section is more than a few weeks stale, trust the code
 over it and update it._
 
 **The service runs now.** [P0-A](P0-A-make-it-run.md) is shipped. `POST /runs` returns a
@@ -50,15 +50,36 @@ is retired. The replacement changes the embedding dimension, and 768 is hardcode
 makes it P2-A's. The README no longer instructs anyone to set the key, and it is row 16 of
 `docs/STATUS.md`.
 
-**[P2-A](P2-A-wire-memory-core.md) is drafted and waiting on review.** It is the work that
-retires eight `stubbed` rows: the composition root that constructs the adapters, the
-migrations that nothing currently owns, the checkpointer, the retry policy, the embedding
-dimension as one constant, and a fusion key that actually fuses. Drafting it turned up
-three things the audit had not: `:Fact` and `:Session` are documented node labels that
-`neo4j.writer.ts` never writes, no node appends the assistant turn to `state.messages` — so
-episodic memory would record half a conversation — and `POST /runs` returns 500 rather than
-400 when `x-correlation-id` is absent, which the README quickstart misses only because the
-gateway mints one. All three are folded into P2-A's scope.
+**[P2-A](P2-A-wire-memory-core.md) is accepted and is the next thing to implement.** It is
+the work that retires eight `stubbed` rows: the composition root that constructs the
+adapters, the migrations that nothing currently owns, the checkpointer, the retry policy,
+the embedding dimension as one constant, and a fusion key that actually fuses. Drafting it
+turned up three things the audit had not: `:Fact` and `:Session` are documented node labels
+that `neo4j.writer.ts` never writes, no node appends the assistant turn to `state.messages`
+— so episodic memory would record half a conversation — and `POST /runs` returns 500 rather
+than 400 when `x-correlation-id` is absent, which the README quickstart misses only because
+the gateway mints one. All three are folded into P2-A's scope.
+
+Review then corrected the draft in five places, all now folded in. The correlation-id fix
+was aimed at the wrong file and would have minted a second id: `LoggingInterceptor` already
+mints one and publishes it three ways, and simply never writes it back to `req.headers`.
+The episodic natural key moved from `(run_id, turn_index)` to `(session_id, turn_index)`,
+because `reflect` writes the whole client-supplied history on every run, so the `run_id`
+key would return each turn once per run from `findBySession`. The retry policy contradicted
+`.context/conventions.md:90-93` — a node that contains its own I/O error makes `retryOn`
+unreachable — so the PRD now amends that convention to separate throwing from swallowing.
+The terminal SSE frame is a `StreamEvent` contract change and is named as one. And the two
+acceptance criteria that would move to P2-D are marked conditional, so a mid-flight split
+does not silently rewrite the contract.
+
+**Two implementation gates on P2-A, in order.** First: confirm with a live key that
+`gemini-embedding-001` accepts `outputDimensionality`. It is documentation-sourced, not
+observed, and it decides whether the column is `vector(768)` or `halfvec(3072)` — a
+migration is the most expensive thing in this PRD to get wrong. Second: the `:Fact`
+decision changes the knowledge-graph schema and invalidates ADR 0002's account of _why_
+fusion fails today — 0002 blames the fusion key, and the real cause is that the two readers
+return disjoint universes. That warrants **ADR 0003**, which records the one-candidate-
+universe decision rather than superseding 0002's still-correct choice to run both stores.
 
 **P2-A does not depend on P5-C.** The spine below used to say it did. `retryPolicy` and
 `compile({ checkpointer })` both exist at the pinned `@langchain/langgraph@0.4.10`, and
@@ -66,12 +87,10 @@ gateway mints one. All three are folded into P2-A's scope.
 `@langchain/core@0.3.80`, so the LangGraph 1.x upgrade is an independent piece of work that
 gets cheaper after P2-A rather than a prerequisite for it.
 
-**Suggested next step:** accept P2-A, or take P1-A. The choice is about what the repository
-should prove next. P2-A turns the architecture from a design into a running system; P1-A is
-the stated thesis and the harder thing to fake. P2-A is the more honest order — evaluating a
-graph whose memory tiers are no-ops measures the stub, which is why P1-A's frontmatter
-already lists P2-A in `depends_on` — but P1-A is the one a reader came for. Neither is
-small.
+**Suggested next step: `/prd P2-A`.** It is `accepted`, so that runs in implement mode.
+P1-A is the stated thesis and the one a reader came for, but it is downstream by
+construction — its fourth acceptance criterion is a grader asserting that `reflect` wrote an
+episodic row, which asserts against a stub until P2-A lands. Neither is small.
 
 **One decision is pending and blocks Tier 3:** `.agents/reviewer.md` rule 10 forbids
 medical and clinical terminology, which rules out the payer-domain vertical. It needs an
@@ -131,12 +150,12 @@ The repository's stated thesis. Today `.github/workflows/agent-eval.yml` runs
 The three-tier memory model exists in `packages/memory-core` and is never instantiated by
 `apps/agent-service`. The graph compiles without a checkpointer.
 
-| ID                               | Title                                                            | Size | Status |
-| -------------------------------- | ---------------------------------------------------------------- | ---- | ------ |
-| [P2-A](P2-A-wire-memory-core.md) | Wire memory-core into the service; add checkpointing and retry   | L    | draft  |
-| P2-B                             | Hybrid retrieval evaluation and the graph/vector/hybrid ablation | M    | draft  |
-| P2-C                             | OpenTelemetry GenAI semantics, including evaluation events       | M    | draft  |
-| P2-D                             | Make hybrid retrieval fuse over one candidate universe           | M    | draft  |
+| ID                               | Title                                                            | Size | Status   |
+| -------------------------------- | ---------------------------------------------------------------- | ---- | -------- |
+| [P2-A](P2-A-wire-memory-core.md) | Wire memory-core into the service; add checkpointing and retry   | L    | accepted |
+| P2-B                             | Hybrid retrieval evaluation and the graph/vector/hybrid ablation | M    | draft    |
+| P2-C                             | OpenTelemetry GenAI semantics, including evaluation events       | M    | draft    |
+| P2-D                             | Make hybrid retrieval fuse over one candidate universe           | M    | draft    |
 
 ## Tier 3 — Regulated-domain credibility
 
