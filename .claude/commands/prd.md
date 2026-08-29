@@ -15,9 +15,9 @@ Work on PRD `$ARGUMENTS`.
   inventing a PRD for an id nobody has agreed to.
 - **The file exists** — route on its `status`, not on the fact that it exists:
   - `accepted` or `in-progress` — Implement mode.
-  - `draft` — **the spec has not been signed off.** Do not implement it. Read it, tell me
-    what you would change, and ask me to accept it. If I tell you to proceed anyway, say in
-    your summary that you implemented a draft, so the record shows the review was skipped.
+  - `draft` — **the spec has not been signed off.** Review mode. Do not implement it. If I
+    tell you to proceed anyway, say in your summary that you implemented a draft, so the
+    record shows the review was skipped.
   - `shipped` — say so and ask what is intended: a follow-up belongs in a new PRD, and a
     correction to a shipped record usually means superseding it.
   - `superseded` — point at `superseded_by` and stop.
@@ -42,6 +42,32 @@ Write the PRD. Do not implement it.
 
 Tell me explicitly what you were unsure about — a PRD I approve without knowing where it was
 guessing is worse than one that flags its own soft spots.
+
+---
+
+## Review mode
+
+The PRD exists and is `draft`. **Say so in your first line** — `/prd <id>` is the same
+command for both, and someone who expected code needs to know why they are reading a review.
+
+1. **Re-verify the PRD's factual claims at HEAD before forming an opinion on them.** Every
+   file:line reference, every dependency claim, every count. A draft's claims were true when
+   written and are the part most likely to have rotted; they are also the part the
+   implementer will trust without checking.
+2. Read `docs/adr/` and `.context/conventions.md`. A PRD that contradicts a written
+   convention is not a PRD problem to note in passing — one of the two has to move, and
+   saying which is part of the review.
+3. **Apply your corrections to the file and commit them.** Do not hand me a list of defects
+   and a question. A review that ends in "shall I apply these?" costs a round trip and
+   leaves the corrections in a transcript instead of in the repo. Leave `status: draft`.
+4. Where a correction is a judgement call rather than a fact, make the call, apply it, and
+   say in your summary what you decided and what the alternative was. I can reverse a
+   decision I can see; I cannot act on one you left open.
+5. Run `yarn lint:docs`.
+6. Report: what you verified, what you changed and why, and anything you could not settle
+   from inside the repo — a claim needing a live API key, a decision that is mine. Then say
+   plainly that accepting it means setting `status: accepted` in the frontmatter and the
+   index row, after which `/prd <id>` implements.
 
 ---
 
