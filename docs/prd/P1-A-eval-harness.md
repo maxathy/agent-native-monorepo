@@ -201,6 +201,14 @@ block becomes a list of named code graders.
 - **Cost.** Every trial is a live model call, and n trials multiply it. Keep the initial
   suite small (10–20 tasks) and accept that the full suite is a nightly artifact until
   P1-B makes replay free.
+- **The seeded fixtures are not comparable to what the agent writes.**
+  `scripts/seed-eval-fixtures.mjs:88` stores `sin(i * 0.01)` vectors, whose L2 norm is
+  `19.364676`. The live path stores L2-normalized `gemini-embedding-001` output, norm
+  `1.000000` — confirmed by querying both in one table after P2-A. Cosine ops tolerate the
+  mismatch, but any grader that compares a seeded fact against a written one, or that reads
+  a raw distance as a score, is measuring the fixture's magnitude rather than its meaning.
+  Normalize the fixtures, or generate them through the same embedder the agent uses.
+
 - **A 100% pass rate means the suite is too easy.** If the first run passes everything,
   the tasks are wrong, not the agent. Add failing cases until the rate is meaningfully
   below 100%.
