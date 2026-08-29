@@ -78,7 +78,7 @@ observed, and it decides whether the column is `vector(768)` or `halfvec(3072)` 
 migration is the most expensive thing in this PRD to get wrong. Second: the `:Fact`
 decision changes the knowledge-graph schema and invalidates ADR 0002's account of _why_
 fusion fails today — 0002 blames the fusion key, and the real cause is that the two readers
-return disjoint universes. That warrants **ADR 0003**, which records the one-candidate-
+return disjoint universes. That warrants **ADR 0004**, which records the one-candidate-
 universe decision rather than superseding 0002's still-correct choice to run both stores.
 
 **P2-A does not depend on P5-C.** The spine below used to say it did. `retryPolicy` and
@@ -92,9 +92,13 @@ P1-A is the stated thesis and the one a reader came for, but it is downstream by
 construction — its fourth acceptance criterion is a grader asserting that `reflect` wrote an
 episodic row, which asserts against a stub until P2-A lands. Neither is small.
 
-**One decision is pending and blocks Tier 3:** `.agents/reviewer.md` rule 10 forbids
-medical and clinical terminology, which rules out the payer-domain vertical. It needs an
-ADR, not a unilateral edit. See P0-B, "Risks and open questions."
+**Tier 3 is unblocked.** `.agents/reviewer.md` rule 10 used to forbid medical and clinical
+terminology, which ruled out the payer-domain vertical. [ADR
+0003](../adr/0003-payer-domain-with-licensing-and-phi-as-the-boundary.md) replaces it: the
+boundary is licensed content, real data and implied clinical authority, not vocabulary. The
+sharp edge is that CPT is AMA-licensed and HCPCS Level I _is_ CPT, so it can never enter
+this repository; ICD-10-CM and HCPCS Level II can. P3-A through P3-D can be drafted against
+a real domain.
 
 ---
 
