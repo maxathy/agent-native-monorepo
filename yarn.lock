@@ -1755,7 +1755,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opentelemetry/context-async-hooks@npm:2.10.0":
+"@opentelemetry/context-async-hooks@npm:2.10.0, @opentelemetry/context-async-hooks@npm:^2.10.0":
   version: 2.10.0
   resolution: "@opentelemetry/context-async-hooks@npm:2.10.0"
   peerDependencies:
@@ -2695,7 +2695,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opentelemetry/sdk-trace-base@npm:2.10.0":
+"@opentelemetry/sdk-trace-base@npm:2.10.0, @opentelemetry/sdk-trace-base@npm:^2.10.0":
   version: 2.10.0
   resolution: "@opentelemetry/sdk-trace-base@npm:2.10.0"
   dependencies:
@@ -2886,6 +2886,8 @@ __metadata:
     "@nestjs/platform-express": "npm:^11.2.1"
     "@nestjs/testing": "npm:^11.2.1"
     "@opentelemetry/auto-instrumentations-node": "npm:^0.79.0"
+    "@opentelemetry/context-async-hooks": "npm:^2.10.0"
+    "@opentelemetry/sdk-trace-base": "npm:^2.10.0"
     "@repo/agent-contracts": "workspace:*"
     "@repo/eslint-config": "workspace:*"
     "@repo/memory-core": "workspace:*"

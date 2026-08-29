@@ -104,4 +104,59 @@ describe('buildAgentGraph', () => {
 
     expect(written).toEqual(['langgraph']);
   });
+
+  it('retries an I/O node that fails twice and succeeds on the third attempt', async () => {
+    // A transient Neo4j error used to fail the run outright — retryPolicy
+    // occurred zero times in source. IO_RETRY allows three attempts.
+    let attempts = 0;
+    const deps = makeDeps();
+    deps.retrieve.retrievalFacade = {
+      retrieve: async () => {
+        attempts += 1;
+        if (attempts < 3) throw new Error('ServiceUnavailable: connection refused');
+        return [];
+      },
+    };
+
+    const compiled = buildAgentGraph(
+      deps,
+      {
+        sessionId: '550e8400-e29b-41d4-a716-446655440000',
+        messages: [{ role: 'user', content: 'What is LangGraph?' }],
+      },
+      'corr-123',
+    );
+    const result = (await compiled.invoke({
+      runId: '550e8400-e29b-41d4-a716-446655440004',
+    })) as { outcome?: string };
+
+    expect(attempts).toBe(3);
+    expect(result.outcome).toBe('success');
+  });
+
+  it('does not retry a client error', async () => {
+    // Retrying a 4xx spends latency to reach the same answer, so retryOn
+    // excludes it. Observed live: a 403 from embedContent failed immediately
+    // rather than three times.
+    let attempts = 0;
+    const deps = makeDeps();
+    deps.retrieve.embedQuery = async () => {
+      attempts += 1;
+      throw Object.assign(new Error('embedContent failed: 403'), { status: 403 });
+    };
+
+    const compiled = buildAgentGraph(
+      deps,
+      {
+        sessionId: '550e8400-e29b-41d4-a716-446655440000',
+        messages: [{ role: 'user', content: 'What is LangGraph?' }],
+      },
+      'corr-123',
+    );
+
+    await expect(
+      compiled.invoke({ runId: '550e8400-e29b-41d4-a716-446655440005' }),
+    ).rejects.toThrow('403');
+    expect(attempts).toBe(1);
+  });
 });

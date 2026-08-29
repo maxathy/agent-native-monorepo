@@ -3,7 +3,8 @@ import { type INestApplication, HttpStatus } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
 import { ZodValidationPipe } from '../src/common/pipes/zod-validation.pipe.js';
-import { RunRequestSchema, RunResponseSchema } from '@repo/agent-contracts';
+import { RunRequestSchema, RunResponseSchema, StreamEventSchema } from '@repo/agent-contracts';
+import { RunsService } from '../src/runs/runs.service.js';
 
 describe('RunsController (e2e)', () => {
   let app: INestApplication;
@@ -107,4 +108,90 @@ describe('RunsController (e2e)', () => {
       expect(response.text).toContain('data:');
     });
   });
+});
+
+describe('POST /runs/stream when a node fails', () => {
+  let app: INestApplication;
+  let savedApiKey: string | undefined;
+  let savedDatabaseUrl: string | undefined;
+  let savedNeo4jUri: string | undefined;
+
+  beforeAll(async () => {
+    savedApiKey = process.env['GOOGLE_API_KEY'];
+    savedDatabaseUrl = process.env['DATABASE_URL'];
+    savedNeo4jUri = process.env['NEO4J_URI'];
+    delete process.env['GOOGLE_API_KEY'];
+    delete process.env['DATABASE_URL'];
+    delete process.env['NEO4J_URI'];
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    app.useGlobalPipes(new ZodValidationPipe(RunRequestSchema));
+    await app.init();
+
+    // A dependency set whose `plan` always throws, so the failure lands after
+    // the stream has already written its first frame and committed the
+    // response. IO_RETRY exhausts its three attempts and the error escapes the
+    // graph, which is exactly the path the terminal frame exists for.
+    const service = moduleFixture.get(RunsService);
+    const embedding = async () => new Array(4).fill(0);
+    service.setDeps({
+      retrieve: { retrievalFacade: { retrieve: async () => [] }, embedQuery: embedding },
+      plan: {
+        callLlm: async () => {
+          throw new Error('upstream model unavailable');
+        },
+      },
+      act: { tools: [], selectTool: async () => null },
+      distill: {
+        extractEntities: async () => ({ entities: [], relationships: [], facts: [] }),
+      },
+      reflect: {
+        episodicRepo: {
+          write: async () => ({ id: '550e8400-e29b-41d4-a716-446655440002' }),
+          findBySession: async () => [],
+        },
+        neo4jWriter: {
+          mergeEntity: async () => {},
+          mergeRelationship: async () => {},
+          mergeFact: async () => {},
+        },
+        pgvectorWriter: { upsertFact: async () => {} },
+        embedText: embedding,
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await app.close();
+    if (savedApiKey !== undefined) process.env['GOOGLE_API_KEY'] = savedApiKey;
+    if (savedDatabaseUrl !== undefined) process.env['DATABASE_URL'] = savedDatabaseUrl;
+    if (savedNeo4jUri !== undefined) process.env['NEO4J_URI'] = savedNeo4jUri;
+  });
+
+  it('emits a terminal error frame and closes the stream', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/runs/stream')
+      .set('Content-Type', 'application/json')
+      .send({
+        sessionId: '550e8400-e29b-41d4-a716-446655440000',
+        messages: [{ role: 'user', content: 'What is LangGraph?' }],
+      });
+
+    const frames = response.text
+      .split('\n\n')
+      .filter((chunk) => chunk.startsWith('data: '))
+      .map((chunk) => StreamEventSchema.parse(JSON.parse(chunk.slice('data: '.length))));
+
+    // Asserted from an observed response rather than from the schema: STATUS
+    // row 14 records `delta` and `state` as declared and emitted zero times,
+    // and a third never-emitted optional field would make that worse.
+    const terminal = frames[frames.length - 1];
+    expect(terminal?.error).toBeDefined();
+    expect(terminal?.error?.message).toContain('upstream model unavailable');
+    expect(frames.some((frame) => frame.node === 'done')).toBe(false);
+  }, 20_000);
 });
