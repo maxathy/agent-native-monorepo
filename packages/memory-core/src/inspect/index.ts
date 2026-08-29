@@ -5,4 +5,11 @@ export {
   type MemoryInspector,
   PgNeo4jMemoryInspector,
 } from './run-inspector.js';
-export { SeedStateSchema, type SeedState, type SeedReset, PgNeo4jSeedReset } from './seed-reset.js';
+export {
+  SeedStateSchema,
+  SeedApplicationSchema,
+  type SeedState,
+  type SeedApplication,
+  type SeedManager,
+  PgNeo4jSeedManager,
+} from './seed-manager.js';

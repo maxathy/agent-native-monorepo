@@ -4,7 +4,9 @@
 // ablation) are all consumers of these.
 export {
   MessageSchema,
+  OutcomeSchema,
   TaskSeedsSchema,
+  type AgentReportedOutcome,
   type AgentHarness,
   type Axes,
   type AxisRequirements,
@@ -75,6 +77,9 @@ export {
   loadSuite,
   loadMemoryRecallSuite,
 } from './dataset.js';
+
+// The vector a seeded fact is stored with.
+export { fixtureEmbedding } from './fixture-embedding.js';
 
 // Runner.
 export { EvalHarness, type EvalHarnessOptions } from './harness.js';

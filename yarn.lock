@@ -2890,6 +2890,7 @@ __metadata:
     "@opentelemetry/sdk-trace-base": "npm:^2.10.0"
     "@repo/agent-contracts": "workspace:*"
     "@repo/eslint-config": "workspace:*"
+    "@repo/eval-harness": "workspace:*"
     "@repo/memory-core": "workspace:*"
     "@repo/shared-types": "workspace:*"
     "@repo/telemetry": "workspace:*"
@@ -2945,6 +2946,8 @@ __metadata:
   resolution: "@repo/eval-harness@workspace:packages/eval-harness"
   dependencies:
     "@repo/eslint-config": "workspace:*"
+    "@repo/memory-core": "workspace:*"
+    "@repo/shared-types": "workspace:*"
     "@repo/tsconfig": "workspace:*"
     "@types/node": "npm:^22.20.1"
     eslint: "npm:^9.39.5"

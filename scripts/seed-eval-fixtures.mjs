@@ -25,15 +25,8 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
 import neo4j from 'neo4j-driver';
-import { EVAL_DATASETS_DIR } from '@repo/eval-harness';
-import {
-  EMBEDDING_DIMENSIONS,
-  CypherNeo4jWriter,
-  PgNeo4jMemoryInspector,
-  PgPgvectorWriter,
-  l2Normalize,
-  runMigrations,
-} from '@repo/memory-core';
+import { EVAL_DATASETS_DIR, fixtureEmbedding } from '@repo/eval-harness';
+import { PgNeo4jMemoryInspector, PgNeo4jSeedManager, runMigrations } from '@repo/memory-core';
 
 /** Every dataset directory under `packages/eval-harness/datasets/`. */
 const datasetDirs = readdirSync(EVAL_DATASETS_DIR, { withFileTypes: true })
@@ -53,25 +46,12 @@ if (!DATABASE_URL || !NEO4J_URI) {
 const pool = new pg.Pool({ connectionString: DATABASE_URL });
 const driver = neo4j.driver(NEO4J_URI, neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD));
 
-/**
- * The fixture vector, normalized.
- *
- * `sin(i * 0.01)` over 768 dimensions has an L2 norm of 19.364676; the live
- * path stores L2-normalized `gemini-embedding-001` output at norm 1.000000.
- * Cosine ops tolerate the mismatch, but a seeded fact and a written one being
- * on different scales is a trap for anything that reads a distance — so the
- * fixture is stored in the same canonical form the agent's own writes use.
- */
-const fixtureEmbedding = () =>
-  l2Normalize(new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin(i * 0.01)));
-
 try {
   // The migration owns the schema. Seeding against a hand-rolled copy is how
   // the eval fixtures ended up in a table shaped differently from production's.
   await runMigrations(pool);
 
-  const neo4jWriter = new CypherNeo4jWriter(driver);
-  const pgvectorWriter = new PgPgvectorWriter(pool);
+  const seeds = new PgNeo4jSeedManager(pool, driver);
   const inspector = new PgNeo4jMemoryInspector(pool, driver);
 
   const fixtures = datasetDirs.flatMap((dir) =>
@@ -86,28 +66,25 @@ try {
 
   for (const file of fixtures) {
     const fixture = JSON.parse(readFileSync(file, 'utf-8'));
-    const seeds = fixture.expectedSeeds;
+    const expected = fixture.expectedSeeds;
 
-    if (!seeds) continue;
+    if (!expected) continue;
 
-    for (const entity of seeds.neo4j ?? []) {
-      await neo4jWriter.mergeEntity(entity);
-    }
-
-    for (const rel of seeds.relationships ?? []) {
-      await neo4jWriter.mergeRelationship({ ...rel, createdAt: new Date() });
-    }
-
-    for (const fact of seeds.pgvector ?? []) {
-      await pgvectorWriter.upsertFact({ ...fact, embedding: fixtureEmbedding() });
-    }
+    await seeds.applySeed({
+      concepts: expected.neo4j ?? [],
+      relationships: expected.relationships ?? [],
+      facts: (expected.pgvector ?? []).map((fact) => ({
+        ...fact,
+        embedding: fixtureEmbedding(),
+      })),
+    });
 
     // Reported as a row count, not as an exit code. The failure this replaces
     // is silent and specific: point the loop at a directory with no fixtures in
     // it and the old script found nothing, seeded nothing, and printed
     // "All fixtures seeded successfully" over an empty database.
-    const conceptIds = (seeds.neo4j ?? []).map((entity) => entity.id);
-    const episodeIds = [...new Set((seeds.pgvector ?? []).map((fact) => fact.episodeId))];
+    const conceptIds = (expected.neo4j ?? []).map((entity) => entity.id);
+    const episodeIds = [...new Set((expected.pgvector ?? []).map((fact) => fact.episodeId))];
 
     let facts = 0;
     let concepts = [];
@@ -124,9 +101,10 @@ try {
     if (missing.length > 0) {
       throw new Error(`${file}: seeded concepts missing after write: ${missing.join(', ')}`);
     }
-    if (facts !== (seeds.pgvector ?? []).length) {
+    if (facts !== (expected.pgvector ?? []).length) {
       throw new Error(
-        `${file}: expected ${(seeds.pgvector ?? []).length} semantic_facts row(s), found ${facts}`,
+        `${file}: expected ${(expected.pgvector ?? []).length} semantic_facts row(s), ` +
+          `found ${facts}`,
       );
     }
 

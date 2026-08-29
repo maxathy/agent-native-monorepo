@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import pg from 'pg';
 import neo4j, { type Driver } from 'neo4j-driver';
 import { PgNeo4jMemoryInspector } from '../src/inspect/run-inspector.js';
-import { PgNeo4jSeedReset } from '../src/inspect/seed-reset.js';
+import { PgNeo4jSeedManager } from '../src/inspect/seed-manager.js';
 import { DrizzleEpisodicRepository } from '../src/episodic/episodic.repo.js';
 import { CypherNeo4jWriter } from '../src/semantic/neo4j/neo4j.writer.js';
 import { PgPgvectorWriter } from '../src/semantic/pgvector/pgvector.writer.js';
@@ -36,14 +36,14 @@ describe.skipIf(SKIP)('memory inspection (integration)', () => {
   let pool: pg.Pool;
   let driver: Driver;
   let inspector: PgNeo4jMemoryInspector;
-  let reset: PgNeo4jSeedReset;
+  let reset: PgNeo4jSeedManager;
 
   beforeAll(async () => {
     pool = new pg.Pool({ connectionString: DATABASE_URL });
     driver = neo4j.driver(NEO4J_URI!, neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD));
     await runMigrations(pool);
     inspector = new PgNeo4jMemoryInspector(pool, driver);
-    reset = new PgNeo4jSeedReset(pool, driver);
+    reset = new PgNeo4jSeedManager(pool, driver);
   });
 
   afterAll(async () => {
@@ -51,21 +51,25 @@ describe.skipIf(SKIP)('memory inspection (integration)', () => {
     await pool.end();
   });
 
-  /** Re-lays the seed, then removes everything a previous trial left behind. */
+  /** Removes everything a previous trial left behind, then re-lays the seed. */
   async function seedAndReset(): Promise<void> {
-    const writer = new CypherNeo4jWriter(driver);
-    await writer.mergeEntity({ id: SEED_CONCEPTS[0]!, label: 'Seed Concept' });
-    await new PgPgvectorWriter(pool).upsertFact({
-      contentHash: SEED_HASHES[0]!,
-      text: 'A seeded fact.',
-      embedding: embedding(),
-      episodeId: SEED_EPISODE,
-      sessionId: SESSION,
-    });
     await reset.restoreToSeed({
       sessionId: SESSION,
       conceptIds: SEED_CONCEPTS,
       contentHashes: SEED_HASHES,
+    });
+    await reset.applySeed({
+      concepts: [{ id: SEED_CONCEPTS[0]!, label: 'Seed Concept' }],
+      relationships: [],
+      facts: [
+        {
+          contentHash: SEED_HASHES[0]!,
+          text: 'A seeded fact.',
+          embedding: embedding(),
+          episodeId: SEED_EPISODE,
+          sessionId: SESSION,
+        },
+      ],
     });
   }
 
@@ -143,6 +147,27 @@ describe.skipIf(SKIP)('memory inspection (integration)', () => {
 
     const seedConcept = await inspector.inspectRun({ runId: RUN, conceptIds: SEED_CONCEPTS });
     expect(seedConcept.presentConceptIds).toEqual(SEED_CONCEPTS);
+  });
+
+  it('re-applies a seed a previous task’s reset removed', async () => {
+    // The Neo4j half of restoreToSeed is database-wide, because neither
+    // :Concept nor :Fact carries a session. So another task's reset takes this
+    // task's concepts with it, and only applySeed makes a two-task suite
+    // repeatable.
+    await reset.restoreToSeed({ sessionId: SESSION, conceptIds: [], contentHashes: [] });
+    expect(
+      (await inspector.inspectRun({ runId: SEED_EPISODE, conceptIds: SEED_CONCEPTS }))
+        .presentConceptIds,
+    ).toEqual([]);
+
+    await seedAndReset();
+
+    const restored = await inspector.inspectRun({
+      runId: SEED_EPISODE,
+      conceptIds: SEED_CONCEPTS,
+    });
+    expect(restored.presentConceptIds).toEqual(SEED_CONCEPTS);
+    expect(restored.factRowsForRun).toBe(1);
   });
 
   it('lets a second trial write its own episodic row under its own run id', async () => {

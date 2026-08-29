@@ -2,6 +2,10 @@ import { z } from 'zod';
 import type pg from 'pg';
 import type { Driver } from 'neo4j-driver';
 import { getTracer } from '@repo/telemetry';
+import { CypherNeo4jWriter } from '../semantic/neo4j/neo4j.writer.js';
+import { PgPgvectorWriter } from '../semantic/pgvector/pgvector.writer.js';
+import { EntityWriteSchema, RelationshipWriteSchema } from '../semantic/neo4j/neo4j.writer.js';
+import { FactUpsertSchema } from '../semantic/pgvector/pgvector.writer.js';
 
 const tracer = getTracer('memory-core');
 
@@ -39,15 +43,56 @@ export type SeedState = z.input<typeof SeedStateSchema>;
  * `runMigrations`, `PostgresSaver.setup()` owns them, and each run mints a
  * fresh `thread_id`, so they accumulate rather than interfere.
  */
-export interface SeedReset {
+export const SeedApplicationSchema = z.object({
+  concepts: z.array(EntityWriteSchema).default([]),
+  relationships: z.array(RelationshipWriteSchema.omit({ createdAt: true })).default([]),
+  facts: z.array(FactUpsertSchema).default([]),
+});
+export type SeedApplication = z.input<typeof SeedApplicationSchema>;
+
+export interface SeedManager {
+  /** Removes everything the seed does not own. */
   restoreToSeed(seed: SeedState): Promise<void>;
+  /** Writes the seed back, through the same adapters production writes with. */
+  applySeed(seed: SeedApplication): Promise<void>;
 }
 
-export class PgNeo4jSeedReset implements SeedReset {
+export class PgNeo4jSeedManager implements SeedManager {
   constructor(
     private readonly pool: pg.Pool,
     private readonly driver: Driver,
   ) {}
+
+  /**
+   * Lays down a task's seed state.
+   *
+   * Paired with `restoreToSeed` rather than left to a one-off script, because
+   * the deletion half is database-wide on the Neo4j side and one task's reset
+   * therefore removes another task's concepts. A suite with two tasks in it is
+   * only repeatable if every reset also re-applies what it is resetting to.
+   */
+  async applySeed(seed: SeedApplication): Promise<void> {
+    const validated = SeedApplicationSchema.parse(seed);
+
+    return tracer.startActiveSpan('memory.inspect.applySeed', async (span) => {
+      try {
+        span.setAttribute('conceptCount', validated.concepts.length);
+        span.setAttribute('relationshipCount', validated.relationships.length);
+        span.setAttribute('factCount', validated.facts.length);
+
+        const neo4jWriter = new CypherNeo4jWriter(this.driver);
+        const pgvectorWriter = new PgPgvectorWriter(this.pool);
+
+        for (const concept of validated.concepts) await neo4jWriter.mergeEntity(concept);
+        for (const relationship of validated.relationships) {
+          await neo4jWriter.mergeRelationship({ ...relationship, createdAt: new Date() });
+        }
+        for (const fact of validated.facts) await pgvectorWriter.upsertFact(fact);
+      } finally {
+        span.end();
+      }
+    });
+  }
 
   async restoreToSeed(seed: SeedState): Promise<void> {
     const validated = SeedStateSchema.parse(seed);
