@@ -50,51 +50,59 @@ is retired. The replacement changes the embedding dimension, and 768 is hardcode
 makes it P2-A's. The README no longer instructs anyone to set the key, and it is row 16 of
 `docs/STATUS.md`.
 
-**[P2-A](P2-A-wire-memory-core.md) is accepted and is the next thing to implement.** It is
-the work that retires eight `stubbed` rows: the composition root that constructs the
-adapters, the migrations that nothing currently owns, the checkpointer, the retry policy,
-the embedding dimension as one constant, and a fusion key that actually fuses. Drafting it
-turned up three things the audit had not: `:Fact` and `:Session` are documented node labels
-that `neo4j.writer.ts` never writes, no node appends the assistant turn to `state.messages`
-— so episodic memory would record half a conversation — and `POST /runs` returns 500 rather
-than 400 when `x-correlation-id` is absent, which the README quickstart misses only because
-the gateway mints one. All three are folded into P2-A's scope.
+**[P2-A](P2-A-wire-memory-core.md) is shipped, and the architecture is a running system
+rather than a design.** `MemoryModule` constructs the pool, the driver, the four adapters,
+the facade and the checkpointer; `RunsService` injects them. Verified against live stores
+from an empty database: one `POST /runs` migrates, boots, and leaves two `episodes` rows,
+one `:Concept`, one `:Fact`, one `semantic_facts` row and nine checkpoints under the runId
+its own response returned. Rows 1, 2, 3, 6, 13 and 15 of `docs/STATUS.md` are
+`implemented`.
 
-Review then corrected the draft in five places, all now folded in. The correlation-id fix
-was aimed at the wrong file and would have minted a second id: `LoggingInterceptor` already
-mints one and publishes it three ways, and simply never writes it back to `req.headers`.
-The episodic natural key moved from `(run_id, turn_index)` to `(session_id, turn_index)`,
-because `reflect` writes the whole client-supplied history on every run, so the `run_id`
-key would return each turn once per run from `findBySession`. The retry policy contradicted
-`.context/conventions.md:90-93` — a node that contains its own I/O error makes `retryOn`
-unreachable — so the PRD now amends that convention to separate throwing from swallowing.
-The terminal SSE frame is a `StreamEvent` contract change and is named as one. And the two
-acceptance criteria that would move to P2-D are marked conditional, so a mid-flight split
-does not silently rewrite the contract.
+**Memory is a second axis, and it does not fall back.** `GOOGLE_API_KEY` selects the model
+half; `DATABASE_URL` + `NEO4J_URI` select the memory half. Configured-but-unreachable exits
+1 in about a second with a message naming the cause — an unreachable Postgres, an
+unreachable Neo4j, or a half-written `.env`. Selecting no-op writers because a configured
+database is missing was the defect; it is not reachable as a runtime path. The
+no-database path is untouched, because a clone with no `.env` still has to serve both
+quickstart curls.
 
-**The embedding gate on P2-A is cleared.** Measured 2026-08-29 against a live key:
-`gemini-embedding-001` accepts `outputDimensionality: 768` and returns 768 values, so the
-column is `vector(768)`, HNSW indexes it, and the `halfvec(3072)` fallback is not needed.
-The truncated vector comes back at L2 norm `0.583`, against exactly `1.0` for the native
-3072 output — so the normalization step is required rather than defensive. Both numbers are
-in P2-A's risks.
+**Implementation found two defects that reading had not.** `ingress` still minted its own
+`runId`, so every run was checkpointed under an identifier that appeared nowhere in its own
+response — nine checkpoint rows on a thread the caller could not name, and a resume that
+could never be asked for. And a half-configured memory axis produced SIGABRT, exit 134 and
+a core dump rather than a message, because Nest aborts the process when a provider factory
+throws. P0-A's lesson holds: a defect found by reading is one defect, and the count is only
+known after the thing runs.
 
-**One gate remains.** The `:Fact`
-decision changes the knowledge-graph schema and invalidates ADR 0002's account of _why_
-fusion fails today — 0002 blames the fusion key, and the real cause is that the two readers
-return disjoint universes. That warrants **ADR 0004**, which records the one-candidate-
-universe decision rather than superseding 0002's still-correct choice to run both stores.
+**Fusion landed here, so P2-D is gone from the index rather than left as a ghost.** The
+graph now stores facts as well as concepts — `(:Fact)-[:MENTIONS]->(:Concept)`, keyed on
+the same content hash pgvector uses — so both retrievers draw from one candidate universe
+and a fact found by both paths is scored at the sum of its two reciprocal ranks. That
+changes ADR 0002's account of why fusion failed, which blamed the key; the key was a
+symptom. [ADR 0004](../adr/0004-one-candidate-universe-for-fusion.md) records the decision
+without superseding 0002's still-correct choice to run both stores.
 
-**P2-A does not depend on P5-C.** The spine below used to say it did. `retryPolicy` and
-`compile({ checkpointer })` both exist at the pinned `@langchain/langgraph@0.4.10`, and
-`@langchain/langgraph-checkpoint-postgres@0.1.3` is peer-compatible with
-`@langchain/core@0.3.80`, so the LangGraph 1.x upgrade is an independent piece of work that
-gets cheaper after P2-A rather than a prerequisite for it.
+**One acceptance criterion is unmet, and it is a credential rather than a defect.** The
+retired `text-embedding-004` is gone and embeddings call `gemini-embedding-001` with an
+explicit output dimensionality, but no run with a live key has been observed returning 200
+— the key in this working tree answers `403 PERMISSION_DENIED — Your API key was reported
+as leaked`. Row 16 of `docs/STATUS.md` therefore stays `broken`, and P1-E owns closing it.
+The retry policy did behave correctly against that 403: a 4xx fails on the first attempt
+rather than three.
 
-**Suggested next step: `/prd P2-A`.** It is `accepted`, so that runs in implement mode.
-P1-A is the stated thesis and the one a reader came for, but it is downstream by
-construction — its fourth acceptance criterion is a grader asserting that `reflect` wrote an
-episodic row, which asserts against a stub until P2-A lands. Neither is small.
+**A written convention had to move, not just the code.** `.context/conventions.md` said
+containing failure inside the node was the intent and told the next reader not to widen the
+gap. A `retryPolicy` only ever fires on a thrown error, so that goal and retry cannot both
+hold: a node that swallows its own I/O failure makes the policy a decoration. The
+convention now separates throwing from swallowing — I/O nodes throw, and containment
+happens once at the graph boundary, which for a stream means a terminal `StreamEvent.error`
+frame because the response is already committed.
+
+**Suggested next step: P1-A.** It is the stated thesis and the one a reader came for, and
+it is no longer downstream of a stub — its fourth acceptance criterion asserts that
+`reflect` wrote an episodic row and MERGEd an entity, and both now happen. P2-B is the
+other candidate: ADR 0002 is provisional until its ablation measures whether hybrid beats
+either store alone, and that measurement is only meaningful now that fusion fuses.
 
 **Tier 3 is unblocked.** `.agents/reviewer.md` rule 10 used to forbid medical and clinical
 terminology, which ruled out the payer-domain vertical. [ADR
@@ -155,15 +163,14 @@ The repository's stated thesis. Today `.github/workflows/agent-eval.yml` runs
 
 ## Tier 2 — Make the architecture real
 
-The three-tier memory model exists in `packages/memory-core` and is never instantiated by
-`apps/agent-service`. The graph compiles without a checkpointer.
+The three-tier memory model is instantiated and the graph is checkpointed. What remains is
+measuring whether the hybrid premise holds, and saying so in the standard vocabulary.
 
-| ID                               | Title                                                            | Size | Status   |
-| -------------------------------- | ---------------------------------------------------------------- | ---- | -------- |
-| [P2-A](P2-A-wire-memory-core.md) | Wire memory-core into the service; add checkpointing and retry   | L    | accepted |
-| P2-B                             | Hybrid retrieval evaluation and the graph/vector/hybrid ablation | M    | draft    |
-| P2-C                             | OpenTelemetry GenAI semantics, including evaluation events       | M    | draft    |
-| P2-D                             | Make hybrid retrieval fuse over one candidate universe           | M    | draft    |
+| ID                               | Title                                                            | Size | Status  |
+| -------------------------------- | ---------------------------------------------------------------- | ---- | ------- |
+| [P2-A](P2-A-wire-memory-core.md) | Wire memory-core into the service; add checkpointing and retry   | L    | shipped |
+| P2-B                             | Hybrid retrieval evaluation and the graph/vector/hybrid ablation | M    | draft   |
+| P2-C                             | OpenTelemetry GenAI semantics, including evaluation events       | M    | draft   |
 
 ## Tier 3 — Regulated-domain credibility
 
@@ -206,8 +213,8 @@ P0-A ──▶ P2-A ──┬──▶ P1-A ──▶ P1-B ──▶ P1-C ──
                 └──▶ P4-C
 ```
 
-P1-A also blocks P2-B: the ablation needs both a working retrieval path and a harness to
-measure it with.
+P2-A is shipped, so everything hanging off it is unblocked. P1-A also blocks P2-B: the
+ablation needs both a working retrieval path and a harness to measure it with.
 
 `P0-B`, `P2-C`, `P3-A`, `P3-C`, `P4-A`, `P4-B`, `P5-A`, `P5-B`, and `P5-C` have no hard
 predecessors and can be picked up whenever they are the most valuable next thing. P5-C

@@ -2,7 +2,7 @@
 id: P2-A
 title: Wire memory-core into the service; add checkpointing and retry
 tier: 2
-status: accepted
+status: shipped
 size: L
 depends_on: [P0-A]
 blocks: [P1-A, P2-B, P3-B, P4-C]
@@ -459,66 +459,76 @@ apps/agent-service/src/
 
 ## Acceptance criteria
 
-- [ ] With `DATABASE_URL` and `NEO4J_URI` set, `POST /runs` writes: after one run, an
+- [x] With `DATABASE_URL` and `NEO4J_URI` set, `POST /runs` writes: after one run, an
       `episodes` row exists for every turn in `state.messages`, at least one `:Concept`
       exists in Neo4j, and at least one `semantic_facts` row exists.
-- [ ] With both variables unset, `POST /runs` and `POST /runs/stream` behave exactly as they
+- [x] With both variables unset, `POST /runs` and `POST /runs/stream` behave exactly as they
       do at HEAD, and `yarn turbo test:service` passes with no database available.
-- [ ] With `DATABASE_URL` or `NEO4J_URI` set but the store unreachable, the service fails
+- [x] With `DATABASE_URL` or `NEO4J_URI` set but the store unreachable, the service fails
       loudly — a failed migration or driver connect stops boot, and a store that dies after
       boot fails the run rather than falling back to the stub set. Selecting no-op writers
       because a configured database is missing is the defect this PRD removes; it must not
       return as a runtime path.
-- [ ] `yarn turbo test:integration` and `packages/memory-core/test/` create no tables of
+- [x] `yarn turbo test:integration` and `packages/memory-core/test/` create no tables of
       their own; the migration is the only DDL for `episodes` and `semantic_facts`, and
       `scripts/seed-eval-fixtures.mjs` runs it rather than issuing its own `CREATE TABLE`.
-- [ ] Running the same `runId` through `reflect` twice produces one `episodes` row per
+- [x] Running the same `runId` through `reflect` twice produces one `episodes` row per
       turn, one `:Concept` per entity, and one `semantic_facts` row per fact.
-- [ ] `\d semantic_facts` on a migrated database shows an HNSW index on `embedding`.
-- [ ] `SHOW CONSTRAINTS` on a bootstrapped Neo4j lists a uniqueness constraint on
-      `:Concept(id)`, and — _unless the fusion work is split to P2-D_ — on
-      `:Fact(contentHash)`.
-- [ ] The literal `768` appears in no `.ts` or `.mjs` file outside
+- [x] `\d semantic_facts` on a migrated database shows an HNSW index on `embedding`.
+- [x] `SHOW CONSTRAINTS` on a bootstrapped Neo4j lists a uniqueness constraint on
+      `:Concept(id)` and on `:Fact(contentHash)`.
+- [x] The literal `768` appears in no `.ts` or `.mjs` file outside
       `packages/memory-core/src/semantic/embedding.ts`.
 - [ ] With `GOOGLE_API_KEY` set, `POST /runs` returns 200 and a `RunResponse`, and the
-      embedding it stores has `EMBEDDING_DIMENSIONS` components.
-- [ ] `graph.compile()` is called with a checkpointer when a database is configured, and
+      embedding it stores has `EMBEDDING_DIMENSIONS` components. **Not met, and not for
+      want of code.** `text-embedding-004` is gone, `gemini-embedding-001:embedContent` is
+      called with `outputDimensionality` and the result L2-normalized, and the dimension is
+      one constant. But the only key available to this working tree answers
+      `403 PERMISSION_DENIED — Your API key was reported as leaked`, so no live 200 has been
+      observed and the claim is unverified. The retry policy did behave correctly against
+      it: a 4xx failed on the first attempt rather than three. **P1-E** owns verification
+      against live model ids; this stays open until a valid key produces a 200.
+- [x] `graph.compile()` is called with a checkpointer when a database is configured, and
       `SELECT count(*) FROM checkpoints WHERE thread_id = <runId>` is non-zero after a run.
-- [ ] Killing the process between `distill` and `reflect` and re-invoking with the same
+- [x] Killing the process between `distill` and `reflect` and re-invoking with the same
       `thread_id` completes the run with one model call in `distill`, not two.
-- [ ] Every node that performs I/O is registered with a `retryPolicy`; a `retrieve` whose
+- [x] Every node that performs I/O is registered with a `retryPolicy`; a `retrieve` whose
       Neo4j driver fails twice and succeeds on the third attempt yields a successful run.
-- [ ] _(Moves to P2-D if the fusion work is split out — see Risks.)_ A fact reachable from
+- [x] _(Landed here rather than in P2-D, so P2-D is removed from the index.)_ A fact reachable from
       a seed concept in Neo4j and returned by pgvector for the same query appears once in
       `retrievedContext`, with a score equal to the sum of its two reciprocal ranks.
-- [ ] A run in session A does not retrieve a `semantic_facts` row written in session B,
+- [x] A run in session A does not retrieve a `semantic_facts` row written in session B,
       unless `crossSession` is set.
-- [ ] A request with `config: { topK: 3, hopDepth: 1 }` produces a
+- [x] A request with `config: { topK: 3, hopDepth: 1 }` produces a
       `memory.pgvector.search` span with `topK` reflecting 3 and a `memory.neo4j.expand`
       span with `hopDepth` 1.
-- [ ] A trace of one `POST /runs` shows `memory.pgvector.search` and `memory.neo4j.expand`
+- [x] A trace of one `POST /runs` shows `memory.pgvector.search` and `memory.neo4j.expand`
       as children of `agent.node.retrieve`, and `memory.neo4j.mergeEntity` and
       `memory.pgvector.upsert` as children of `agent.node.reflect`.
-- [ ] `RunResponse.messages` contains the assistant turn, and `reflect` writes it to
+- [x] `RunResponse.messages` contains the assistant turn, and `reflect` writes it to
       `episodes`.
-- [ ] `POST /runs` with no `x-correlation-id` header returns 200, and the response's
+- [x] `POST /runs` with no `x-correlation-id` header returns 200, and the response's
       `x-correlation-id` header is a generated UUID that also appears in the run's log
       lines. (`RunResponse` has no correlation-id field and does not gain one — the header
       is the transport, and widening the response contract is not in this PRD's scope.)
-- [ ] A node failure during `POST /runs/stream` emits a terminal SSE frame carrying
+- [x] A node failure during `POST /runs/stream` emits a terminal SSE frame carrying
       `error: { node, message }` and closes the stream; the log contains no
       `ERR_HTTP_HEADERS_SENT`. The frame is asserted from an observed response, not from
       the schema, and `docs/STATUS.md` row 14 is updated to record `error` as emitted.
 - [ ] `docs/STATUS.md` rows 1, 2, 3, 6, 13 and 16 are `implemented` with evidence that
       resolves, and row 4's capability text states convergence under replay rather than
       atomicity. Row 15 moves to `implemented` here, or to P2-D's ownership if the fusion
-      work is split.
-- [ ] `.agents/memory-author.md`'s episodic guidance describes the natural key, and
+      work is split. **Met except for row 16**, which stays `broken` for the reason above —
+      the same credential, not a second defect. Rows 1, 2, 3, 6, 13 and 15 are
+      `implemented`; row 4 is restated as convergence under replay; row 11 is restated too,
+      because "nodes never throw" and a retry policy cannot both hold. **P1-E** owns
+      closing row 16.
+- [x] `.agents/memory-author.md`'s episodic guidance describes the natural key, and
       `:Session` is gone from `README.md` and `.context/architecture.md`.
-- [ ] `.context/conventions.md:90-93` distinguishes throwing from swallowing, so that a
+- [x] `.context/conventions.md:90-93` distinguishes throwing from swallowing, so that a
       later reader "fixing" `retrieve` or `reflect` to contain their own I/O errors cannot
       turn the retry policy into a no-op without contradicting the written convention.
-- [ ] `yarn turbo typecheck`, `yarn turbo lint`, `yarn lint:docs` and `yarn format:check`
+- [x] `yarn turbo typecheck`, `yarn turbo lint`, `yarn lint:docs` and `yarn format:check`
       pass.
 
 ## Risks and open questions
