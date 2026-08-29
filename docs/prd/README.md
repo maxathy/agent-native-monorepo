@@ -105,7 +105,7 @@ convention now separates throwing from swallowing — I/O nodes throw, and conta
 happens once at the graph boundary, which for a stream means a terminal `StreamEvent.error`
 frame because the response is already committed.
 
-**P1-A has been reviewed at HEAD and is still `draft`, awaiting sign-off.** Its blocking
+**P1-A is `accepted` and is the PRD in progress.** Its blocking
 risk is gone — P2-A shipped, so its fourth criterion asserts against writes that actually
 happen — but the review found two live ways for the suite to grade a stub without saying
 so, which is the failure P2-A shipped and had to reopen for. One is that the no-op writers
@@ -118,8 +118,11 @@ The review also found the migrated fixture cannot exercise the graph. `expandFro
 returns `:Fact` nodes reached through `MENTIONS`, which is ADR 0004's change; the seed
 script writes only `:Concept` and `RELATES_TO`. A task seeded from `run-fixture-001.json`
 is a vector-path task and the PRD now says so rather than letting a reader assume otherwise.
-Accepting P1-A means setting `status: accepted` in its frontmatter and in the row below,
-after which `/prd P1-A` implements it.
+P1-A was accepted on 2026-08-29 on the strength of that review, which is commit `807b1ae`
+and reads as the diff that produced this decision. The four judgement calls it records —
+outcome graders reading through `memory-core`, the Jest/Vitest split left standing, no
+`test:eval` script in the package, and the `Eval` convention row deferred to delivery — are
+what acceptance endorses. Reversing any of them is an edit to the criteria, not a reopen.
 
 **P2-B is the other candidate.** ADR 0002 is provisional until its ablation measures
 whether hybrid beats either store alone, and that measurement is only meaningful now that
@@ -181,14 +184,14 @@ The repository's stated thesis. Today `.github/workflows/agent-eval.yml` runs
 `yarn turbo test:eval`, which resolves to a single integration suite in
 `packages/memory-core` that never invokes the agent.
 
-| ID                           | Title                                                         | Size | Status |
-| ---------------------------- | ------------------------------------------------------------- | ---- | ------ |
-| [P1-A](P1-A-eval-harness.md) | `packages/eval-harness` — evaluation as a first-class package | L    | draft  |
-| P1-B                         | `packages/agent-cassette` — decision-level record and replay  | M    | draft  |
-| P1-C                         | Tiered evaluation pipeline replacing the nightly stub         | M    | draft  |
-| P1-D                         | Statistical regression gate with paired bootstrap             | M    | draft  |
-| P1-E                         | Model-drift canary against pinned and floating model ids      | S    | draft  |
-| P1-F                         | Cost, latency, and step budgets as CI assertions              | S    | draft  |
+| ID                           | Title                                                         | Size | Status   |
+| ---------------------------- | ------------------------------------------------------------- | ---- | -------- |
+| [P1-A](P1-A-eval-harness.md) | `packages/eval-harness` — evaluation as a first-class package | L    | accepted |
+| P1-B                         | `packages/agent-cassette` — decision-level record and replay  | M    | draft    |
+| P1-C                         | Tiered evaluation pipeline replacing the nightly stub         | M    | draft    |
+| P1-D                         | Statistical regression gate with paired bootstrap             | M    | draft    |
+| P1-E                         | Model-drift canary against pinned and floating model ids      | S    | draft    |
+| P1-F                         | Cost, latency, and step budgets as CI assertions              | S    | draft    |
 
 ## Tier 2 — Make the architecture real
 

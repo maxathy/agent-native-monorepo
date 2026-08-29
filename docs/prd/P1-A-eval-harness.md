@@ -2,7 +2,7 @@
 id: P1-A
 title: packages/eval-harness — evaluation as a first-class package
 tier: 1
-status: draft
+status: accepted
 size: L
 depends_on: [P0-A, P2-A]
 blocks: [P1-B, P1-C, P1-D, P1-E, P1-F, P2-B]
