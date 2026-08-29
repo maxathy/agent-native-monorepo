@@ -42,7 +42,8 @@ graph LR
     retrieve --> plan
     plan --> act
     act -->|"stepCount < maxSteps<br/>& shouldContinue"| act
-    act -->|"loop done"| reflect
+    act -->|"loop done"| distill
+    distill --> reflect
     reflect --> egress
     egress --> E((END))
 ```
@@ -113,11 +114,17 @@ Both quickstart curls above work against a fresh clone with no `.env` at all: wi
 `GOOGLE_API_KEY` set, the service runs the graph against a deterministic stub dependency
 set, which is also what CI exercises.
 
-> **Setting `GOOGLE_API_KEY` currently breaks `POST /runs`.** The live dependency set
-> embeds with `text-embedding-004`, which is retired, so the run fails with a 500. The
-> replacement model changes the embedding dimension, and 768 is hardcoded in three places,
-> so the fix is part of P2-A rather than a one-line swap. Tracked as row 16 in
-> [`docs/STATUS.md`](docs/STATUS.md).
+Memory is a second, independent axis. Set `DATABASE_URL` and `NEO4J_URI` — as
+`docker compose --profile full` does — and the service constructs the real adapters, runs
+its migrations, installs the Neo4j constraints and checkpoints every run. Set neither and
+it runs against deterministic stubs. Set one without the other and it refuses to start,
+because falling back to no-op writers when a configured database is missing is how a
+system quietly stops persisting anything.
+
+> **`GOOGLE_API_KEY` is still unverified.** The retired `text-embedding-004` is gone —
+> embeddings now call `gemini-embedding-001` with an explicit output dimensionality — but
+> no run with a live key has been observed returning 200, so row 16 of
+> [`docs/STATUS.md`](docs/STATUS.md) stays `broken` until one is.
 
 Copy `.env.example` to `.env` if you want to point the service at your own infrastructure:
 
@@ -154,36 +161,44 @@ Per-run, in-process state held in the LangGraph `AgentState` object. Accumulates
 
 ### Episodic Memory
 
-Session-scoped turn history persisted in Postgres via Drizzle ORM. Records the full conversation per `session_id`. Serves as raw material for Semantic tier promotion.
+Session-scoped turn history persisted in Postgres via Drizzle ORM. Records the full conversation per `session_id` — both sides of it: `plan` appends the assistant's turn to `state.messages` before `reflect` persists them. Serves as raw material for Semantic tier promotion.
 
-Retention is unbounded: there is no expiry column and no cleanup job. The `reflect` node writes each turn with a plain `INSERT`, so a replayed run duplicates its rows — the idempotency the tier needs is a natural key it does not yet have.
+Retention is unbounded: there is no expiry column and no cleanup job. Writes upsert on the `(session_id, turn_index)` natural key, so a replayed run — or a re-sent history under a fresh `run_id` — lands on the same rows. First write wins, which makes the log a record of what was first seen rather than a mirror of the client's current history.
 
 ### Semantic Memory (Hybrid)
 
 > **This is the intended architectural differentiator.** Long-term memory is designed to span two complementary indices, both written by the `reflect` node.
 
-The `reflect` node writes Postgres, then Neo4j, then pgvector, in three sequential loops. Each individual write is replay-safe — Cypher `MERGE`, and pgvector upsert on a content hash — but the three are not atomic together, and a crash between them leaves the indices disagreeing. Making that write one unit is P2-A.
+The `reflect` node writes Postgres, then Neo4j, then pgvector, in three sequential loops. Each write is replay-safe — the episodic natural key, Cypher `MERGE`, and pgvector upsert on a content hash — and `reflect` reads its extraction from state rather than deriving it, so a retried attempt writes exactly what the first attempt wrote. The three are still not atomic together: a crash between them leaves the indices disagreeing until the retry, not permanently. That guarantee is convergence under replay, not exactly-once; [ADR 0001](docs/adr/0001-langgraph-over-a-durable-execution-engine.md) explains why the stronger one was not bought, and an outbox would be a new PRD.
 
 | Index            | Technology | What It Stores                                   | Retrieval Pattern                    |
 | ---------------- | ---------- | ------------------------------------------------ | ------------------------------------ |
 | Knowledge Graph  | Neo4j 5    | Entities (`:Concept`, `:Fact`) and relationships | Bounded multi-hop Cypher traversal   |
-| Dense Embeddings | pgvector   | Distilled fact embeddings (768-dim)              | Cosine similarity via `<=>` operator |
+| Dense Embeddings | pgvector   | Distilled fact embeddings (768-dim, HNSW)        | Cosine similarity via `<=>` operator |
 
 **Why both?** Dense search finds semantically similar facts (paraphrase, synonym variants) but cannot follow relational chains. Graph traversal follows explicit relationships (A→B→C) but misses paraphrase variants. Together, they provide complementary recall paths that reduce false negatives. The reasoning is recorded in [ADR 0002](docs/adr/0002-neo4j-and-pgvector-rather-than-one-store.md), which also notes that the premise is unmeasured until P2-B builds the ablation.
 
-Results are intended to merge via **Reciprocal Rank Fusion (RRF)**. `rrfMerge` is implemented and unit-tested, but its fusion key is `entityId ?? content`, and Neo4j candidates always carry an `entityId` while pgvector candidates never do — so the two lists key differently, no score is ever summed, and the current behaviour is interleaving rather than fusion. P2-A fixes the key; until then, treat the RRF claim as a design, not a result.
+Results merge via **Reciprocal Rank Fusion (RRF)**, keyed on the fact's content hash. This used to interleave rather than fuse, and the reason was not the key: the graph returned `:Concept` nodes while pgvector returned facts, and two lists drawn from disjoint universes cannot intersect under any key. The graph now stores facts too — `(:Fact)-[:MENTIONS]->(:Concept)`, keyed on the same hash — so traversal reaches the same objects vector search returns, and a fact found by both paths is scored at the sum of its two reciprocal ranks. [ADR 0004](docs/adr/0004-one-candidate-universe-for-fusion.md) records the decision.
+
+Retrieval is scoped to the requesting session by default, with an explicit `crossSession` opt-out.
 
 ---
 
 ## LangGraph Node Reference
 
+`distill` and `reflect` are separate nodes so that `reflect` can carry a retry policy. A
+node is only safe to retry when it is a function of its input state, and a `reflect` that
+extracted its own entities was not: a second attempt could word a fact differently, change
+its hash, and write an extra row rather than converging on the first attempt's.
+
 | Node       | Purpose                         | Key Input Fields               | Key Output Fields            | Side Effects                              |
 | ---------- | ------------------------------- | ------------------------------ | ---------------------------- | ----------------------------------------- |
 | `ingress`  | Validate request, seed state    | Raw HTTP body                  | Full `AgentState`            | None                                      |
-| `retrieve` | Hybrid semantic recall          | `messages`                     | `retrievedContext`           | _(none yet — see `docs/STATUS.md` row 1)_ |
-| `plan`     | LLM planning step               | `messages`, `retrievedContext` | `currentPlan`, `tokenCounts` | LLM API call                              |
+| `retrieve` | Hybrid semantic recall          | `messages`, `topK`, `hopDepth` | `retrievedContext`           | pgvector search, Neo4j traversal          |
+| `plan`     | LLM planning step               | `messages`, `retrievedContext` | `currentPlan`, `messages`, `tokenCounts` | LLM API call                  |
 | `act`      | Tool execution loop             | `currentPlan`                  | `toolOutputs`, `stepCount`   | Tool invocations                          |
-| `reflect`  | Memory consolidation            | Full state                     | _(none — side-effect node)_  | _(none yet — see `docs/STATUS.md` row 1)_ |
+| `distill`  | Extract entities and facts      | `messages`                     | `extraction`                 | LLM API call                              |
+| `reflect`  | Memory consolidation            | `messages`, `extraction`       | _(none — side-effect node)_  | Episodic insert, Neo4j MERGE, pgvector upsert |
 | `egress`   | Validate output, build response | Full state                     | `outcome`                    | None                                      |
 
 ---

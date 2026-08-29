@@ -38,8 +38,15 @@ This is the most critical constraint. All writes must be replay-safe:
 
 ### Episodic
 
-- Writes are append-only by design (new rows per turn). No upsert needed, but the
-  `reflect` node should check for existing rows before writing duplicates.
+- The natural key is `(session_id, turn_index)`, and the write is
+  `ON CONFLICT (session_id, turn_index) DO NOTHING`. Do not add a read-before-write: the
+  constraint is the check, and a `SELECT` first is a race, not a guard.
+- `run_id` is a column, not part of the key. `reflect` writes the whole client-supplied
+  history on every run, so keying on `run_id` returns each turn once per run — which is not
+  the full turn history the tier is specified to hold.
+- First write wins. The log records what was first seen; it is not a mirror of the client's
+  current history. Changing that is P3-B's, because an audit trail is the first consumer
+  that can tell the two apart.
 
 ## Testing Requirements
 

@@ -87,10 +87,16 @@ Each tier has one command. All of them run in CI except `test:eval`, which is ni
   Nest has no `design:paramtypes` to resolve an implicit constructor parameter and injects
   `undefined`. It only breaks on the dev path — `tsc` emits the metadata — so the compiled
   build and the service tests will not catch it.
-- Graph nodes return `Partial<AgentState>`. Containing failure inside the node is the
-  intent, and the code does not do it yet: `ingress.node.ts` throws on a Zod parse failure,
-  and `retrieve` and `reflect` propagate I/O errors to the caller. Do not add a new node
-  that widens that gap.
+- Graph nodes return `Partial<AgentState>`. **Throwing is not swallowing, and an I/O node
+  must throw.** A `retryPolicy` only ever fires on a thrown error, so a node that catches
+  its own store failure and returns a `Partial<AgentState>` makes `retryOn` unreachable and
+  the policy a decoration. `retrieve`, `plan`, `act`, `distill` and `reflect` therefore
+  propagate their I/O errors on purpose.
+- Containment happens once, at the graph boundary. An exhausted retry becomes a failed run
+  with the checkpoint intact — a JSON error body on `POST /runs`, and a terminal
+  `StreamEvent.error` frame on `POST /runs/stream`, because that response is already
+  committed and cannot be given an error body. What must never happen is an unhandled
+  rejection or a stream that simply stops.
 
 ## Dependencies
 

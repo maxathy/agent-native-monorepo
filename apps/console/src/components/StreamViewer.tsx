@@ -11,9 +11,11 @@ const nodeColors: Record<string, string> = {
   retrieve: '#2196f3',
   plan: '#ff9800',
   act: '#9c27b0',
+  distill: '#f06292',
   reflect: '#e91e63',
   egress: '#00bcd4',
   done: '#808090',
+  error: '#ff5252',
 };
 
 export function StreamViewer({ events, isStreaming }: StreamViewerProps) {
@@ -68,6 +70,11 @@ export function StreamViewer({ events, isStreaming }: StreamViewerProps) {
               <span style={{ color: nodeColors[event.node] ?? '#808090' }}>[{event.node}]</span>
               {event.delta && (
                 <span style={{ color: '#e0e0e8', marginLeft: '0.5rem' }}>{event.delta}</span>
+              )}
+              {event.error && (
+                <span style={{ color: '#ff5252', marginLeft: '0.5rem' }}>
+                  {event.error.node}: {event.error.message}
+                </span>
               )}
             </div>
           ))

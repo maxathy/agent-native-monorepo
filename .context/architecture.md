@@ -58,29 +58,42 @@ Working Memory is reached by a live request today; see `docs/STATUS.md` rows 1-4
 - **Implementation:** Postgres table via Drizzle ORM.
 - **Retention:** Unbounded. There is no expiry column and no cleanup job; a TTL is planned
   and unowned (`docs/STATUS.md` row 5).
-- **Purpose:** Full turn history. Raw material for Semantic tier promotion.
+- **Purpose:** Full turn history — both sides of it. `plan` appends the assistant's turn to
+  `state.messages` before `reflect` persists them.
+- **Natural key:** `(session_id, turn_index)`, written `ON CONFLICT DO NOTHING`. `reflect`
+  writes the whole client-supplied history on every run, so keying on `run_id` would return
+  each turn once per run. `run_id` stays as a column recording which run first persisted the
+  turn. First write wins: an edited and re-sent turn is dropped, not updated.
 
 ### Semantic Memory (Long-Term Hybrid)
 
 Two complementary indices, both written by the `reflect` node:
 
-- **Neo4j Knowledge Graph:** Typed nodes (`:Concept`, `:Fact`, `:Session`) and relationships.
-  Enables symbolic multi-hop traversal for explainable relational recall.
-- **pgvector Collection:** Dense embeddings, 768-dim, on a sequential scan — there is no
-  HNSW or IVFFlat index. Enables cosine similarity search for paraphrase and synonym
-  recall.
+- **Neo4j Knowledge Graph:** Typed nodes (`:Concept`, `:Fact`) joined by `:MENTIONS`, plus
+  `:RELATES_TO` between concepts. Enables symbolic multi-hop traversal for explainable
+  relational recall. Uniqueness constraints on `:Concept(id)` and `:Fact(contentHash)` are
+  installed at boot — `MERGE` is not an upsert without them.
+- **pgvector Collection:** Dense embeddings on an HNSW index with `vector_cosine_ops`.
+  Enables cosine similarity search for paraphrase and synonym recall. Scoped to the
+  requesting session unless the query opts out.
+
+The dimension is one exported constant, `EMBEDDING_DIMENSIONS`, and every schema, DDL,
+fixture and stub derives from it. It is 768 because pgvector refuses an HNSW index above
+2000 dimensions, so `gemini-embedding-001` is asked for a truncated output and the result
+is L2-normalized — a Matryoshka vector below its native width is not unit-norm.
 
 The two writes are sequential, not atomic: `reflect` loops over Postgres, then Neo4j, then
-pgvector. Each write is individually replay-safe, the set of them is not. The embedding
-model is a live problem — `text-embedding-004` is retired, and choosing its replacement is
-a dimension decision, so it travels with the wiring work in P2-A.
+pgvector. Each write is individually replay-safe and `reflect` is a function of
+`state.extraction`, so a retried attempt writes exactly what the first attempt wrote. The
+set of them is still not one transaction — the guarantee is convergence under replay, not
+exactly-once. ADR 0001 explains why.
 
 **Why both?** Dense search finds semantically similar facts but cannot follow relational
 chains. Graph traversal follows explicit relationships but misses paraphrase variants.
 Together they provide complementary recall paths that reduce false negatives. Results are
-merged via Reciprocal Rank Fusion (RRF) — see ADR 0002, which also records that the
-implementation currently interleaves rather than fuses, because the two sources key
-differently.
+merged via Reciprocal Rank Fusion (RRF) over one candidate universe: both readers return
+facts, keyed on the same content hash. See ADR 0002 for the two-store choice and ADR 0004
+for why fusion needed the graph to store facts and not only concepts.
 
 ```
 Working Memory ──[reflect]──▶ Episodic (Postgres)
@@ -92,14 +105,23 @@ Working Memory ──[reflect]──▶ Episodic (Postgres)
 
 ## LangGraph Topology
 
-The agent runs as a compiled `StateGraph` with six nodes:
+The agent runs as a compiled `StateGraph` with seven nodes:
 
 ```
-START → ingress → retrieve → plan → act ⟲ (loop) → reflect → egress → END
+START → ingress → retrieve → plan → act ⟲ (loop) → distill → reflect → egress → END
 ```
 
 - **act** self-loops while `stepCount < maxSteps && shouldContinue`.
+- **distill** makes the extraction model call and writes `extraction` into state. It exists
+  so that **reflect** can be retried: a node is only safe to re-run when it is a function of
+  its input state, and a `reflect` that extracted its own entities was not.
 - **reflect** is the sole writer to Episodic and Semantic tiers.
+- Every node that performs I/O — `retrieve`, `plan`, `act`, `distill`, `reflect` — carries a
+  `retryPolicy`. `ingress` and `egress` do not, because they do no I/O.
+- The graph is compiled with a `PostgresSaver` when the memory axis is configured. The
+  `thread_id` is the `runId`, minted in `RunsService` before the invoke: a run is the unit
+  that gets resumed and audited, and putting a session's runs on one thread would make each
+  run resume into the previous one's channel values.
 - A state machine (not a chain) was chosen for fault tolerance: nodes are the unit a
   checkpointer can resume from, and the write adapters are idempotent (Cypher MERGE,
   pgvector upsert on content hash) so that a resumed node is safe to re-run.
