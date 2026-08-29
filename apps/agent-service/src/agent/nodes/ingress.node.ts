@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { getTracer } from '@repo/telemetry';
 import { RunRequestSchema, RunRequestConfigSchema } from '@repo/agent-contracts';
 import { seedWorkingMemory } from '@repo/memory-core';
@@ -14,7 +13,13 @@ export async function ingressNode(
   return tracer.startActiveSpan('agent.node.ingress', async (span) => {
     try {
       const request = RunRequestSchema.parse(rawBody);
-      const runId = randomUUID();
+
+      // The runId arrives in the initial state, minted by RunsService, because
+      // it is also the checkpointer's thread_id and has to exist before the
+      // invoke. Minting a fresh one here would leave the run's checkpoints
+      // filed under an id that appears nowhere in its response — the run could
+      // not be resumed by the identifier its caller was given.
+      const runId = state.runId;
 
       span.setAttribute('run_id', runId);
       span.setAttribute('session_id', request.sessionId);
