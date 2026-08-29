@@ -121,16 +121,17 @@ it runs against deterministic stubs. Set one without the other and it refuses to
 because falling back to no-op writers when a configured database is missing is how a
 system quietly stops persisting anything.
 
-> **`GOOGLE_API_KEY` is still unverified.** The retired `text-embedding-004` is gone —
-> embeddings now call `gemini-embedding-001` with an explicit output dimensionality — but
-> no run with a live key has been observed returning 200, so row 16 of
-> [`docs/STATUS.md`](docs/STATUS.md) stays `broken` until one is.
-
 Copy `.env.example` to `.env` if you want to point the service at your own infrastructure:
 
 ```bash
 cp .env.example .env
 ```
+
+The service reads that file at boot. A variable already set in the environment still wins —
+which is what a container, a CI runner and a secrets manager all assume — so a long-lived
+`export GOOGLE_API_KEY=...` in a shell rc file will quietly outrank the file you just
+edited. Boot names any variable in that state: look for `env.file.shadowed` in the log,
+which lists the variable names whose `.env` values are not in use.
 
 ### Full-Stack Docker
 

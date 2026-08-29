@@ -461,7 +461,9 @@ apps/agent-service/src/
 
 - [x] With `DATABASE_URL` and `NEO4J_URI` set, `POST /runs` writes: after one run, an
       `episodes` row exists for every turn in `state.messages`, at least one `:Concept`
-      exists in Neo4j, and at least one `semantic_facts` row exists.
+      exists in Neo4j, and at least one `semantic_facts` row exists. Verified on **both**
+      model axes. It held on the stub axis at first ship and failed on the live one; see
+      "Post-ship correction".
 - [x] With both variables unset, `POST /runs` and `POST /runs/stream` behave exactly as they
       do at HEAD, and `yarn turbo test:service` passes with no database available.
 - [x] With `DATABASE_URL` or `NEO4J_URI` set but the store unreachable, the service fails
@@ -479,15 +481,11 @@ apps/agent-service/src/
       `:Concept(id)` and on `:Fact(contentHash)`.
 - [x] The literal `768` appears in no `.ts` or `.mjs` file outside
       `packages/memory-core/src/semantic/embedding.ts`.
-- [ ] With `GOOGLE_API_KEY` set, `POST /runs` returns 200 and a `RunResponse`, and the
-      embedding it stores has `EMBEDDING_DIMENSIONS` components. **Not met, and not for
-      want of code.** `text-embedding-004` is gone, `gemini-embedding-001:embedContent` is
-      called with `outputDimensionality` and the result L2-normalized, and the dimension is
-      one constant. But the only key available to this working tree answers
-      `403 PERMISSION_DENIED — Your API key was reported as leaked`, so no live 200 has been
-      observed and the claim is unverified. The retry policy did behave correctly against
-      it: a 4xx failed on the first attempt rather than three. **P1-E** owns verification
-      against live model ids; this stays open until a valid key produces a 200.
+- [x] With `GOOGLE_API_KEY` set, `POST /runs` returns 200 and a `RunResponse`, and the
+      embedding it stores has `EMBEDDING_DIMENSIONS` components. Verified 2026-08-29 against
+      live Postgres, Neo4j and Gemini: 18 `semantic_facts` rows at `vector_dims` 768 and L2
+      norm exactly `1.000000`. See "Post-ship correction" for why the first attempt at this
+      criterion reported a leaked key.
 - [x] `graph.compile()` is called with a checkpointer when a database is configured, and
       `SELECT count(*) FROM checkpoints WHERE thread_id = <runId>` is non-zero after a run.
 - [x] Killing the process between `distill` and `reflect` and re-invoking with the same
@@ -528,8 +526,42 @@ apps/agent-service/src/
 - [x] `.context/conventions.md:90-93` distinguishes throwing from swallowing, so that a
       later reader "fixing" `retrieve` or `reflect` to contain their own I/O errors cannot
       turn the retry policy into a no-op without contradicting the written convention.
+- [x] `.env` is read by the service, and a variable the ambient environment overrides is
+      named in a boot warning rather than silently ignored.
 - [x] `yarn turbo typecheck`, `yarn turbo lint`, `yarn lint:docs` and `yarn format:check`
       pass.
+
+## Post-ship correction
+
+This PRD was marked `shipped` with twenty-one of twenty-three criteria met, and reopened
+the same day. Two of the ticks were wrong, for one shared reason: **acceptance was verified
+on the stub model axis, and the live model axis was never exercised.**
+
+The proximate cause was environmental. `~/.commonrc` on the author's machine exported a
+revoked `GOOGLE_API_KEY`, and nothing on the Node path read `.env` — `yarn dev` is bare
+`tsx src/main.ts` — so the fresh key in the file was never used and every live call returned
+`403 PERMISSION_DENIED`. Criterion 9 was recorded as blocked on a credential and handed to
+P1-E. It was not: the key was fine, and the service was reading a different one.
+
+With a working key the live axis exposed a second defect that the stub axis structurally
+could not. `distill` parsed the model response with
+`try { JSON.parse(...) } catch { return EMPTY_EXTRACTION }`, and `gemini-2.5-flash` wraps
+JSON in a ` ```json ` fence unless `responseMimeType: application/json` is set. So every
+live extraction threw, every catch returned an empty set, and `reflect` wrote none of it —
+no `:Concept`, no `:Fact`, no `semantic_facts` row — while the run reported
+`outcome: "success"`. Criterion 1 held on the stub axis, whose canned extraction always
+parses, and failed on every live run.
+
+That is the same defect this PRD exists to remove, in a place it did not look: a silent
+fallback that makes a broken path report success. The added criterion about a
+configured-but-unreachable store closed one instance of it in the memory axis; this one was
+in the model axis, where nothing was watching.
+
+**The lesson for the next PRD is about acceptance, not about JSON.** A criterion verified on
+a stub is verified against the half of the system that cannot fail. Where a PRD names two
+independent axes — as this one's own Design section does — the criteria have to say which
+axis they were checked on, and a criterion that can only be checked on one of them is not
+met.
 
 ## Risks and open questions
 
