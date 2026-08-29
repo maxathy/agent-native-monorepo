@@ -29,6 +29,7 @@ export { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, l2Normalize } from './semantic/e
 export {
   EntityWriteSchema,
   RelationshipWriteSchema,
+  FactWriteSchema,
   type Neo4jWriter,
   CypherNeo4jWriter,
 } from './semantic/neo4j/neo4j.writer.js';

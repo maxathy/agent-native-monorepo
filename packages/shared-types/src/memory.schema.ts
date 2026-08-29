@@ -10,6 +10,7 @@ export const RetrievedContextItemSchema = z.object({
   source: z.enum(['neo4j', 'pgvector']),
   score: z.number(),
   content: z.string(),
+  contentHash: z.string().optional(),
   entityId: z.string().optional(),
   episodeId: z.string().uuid().optional(),
 });

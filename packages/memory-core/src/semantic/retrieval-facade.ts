@@ -16,6 +16,8 @@ export const RetrievalCandidateSchema = z.object({
   source: z.enum(['neo4j', 'pgvector']),
   score: z.number(),
   content: z.string(),
+  /** sha256 of `content`. The fusion key — see `rrfMerge`. */
+  contentHash: z.string().optional(),
   entityId: z.string().optional(),
   episodeId: z.string().uuid().optional(),
 });
@@ -38,6 +40,16 @@ const RRF_K = 60;
  * For each candidate, the RRF score is: 1 / (k + rank)
  * where rank is 1-indexed. Candidates appearing in both lists
  * receive the sum of their RRF scores from each list.
+ *
+ * The key is `contentHash`, falling back to `content`. It used to be
+ * `entityId ?? content`, and Neo4j candidates always carried an `entityId`
+ * while pgvector candidates never did, so the two lists keyed differently and
+ * no score was ever summed. Fixing the key alone would not have helped: the
+ * graph returned `:Concept` nodes and pgvector returned facts, and two lists
+ * drawn from disjoint universes cannot intersect under any key. Both readers
+ * now return facts. The fallback is exact rather than defensive — a fact's
+ * hash is sha256 of the same text `content` carries, so both spellings of the
+ * key identify a fact identically.
  */
 export function rrfMerge(lists: RetrievalCandidate[][], topK: number): RetrievalCandidate[] {
   const scoreMap = new Map<string, { candidate: RetrievalCandidate; rrfScore: number }>();
@@ -45,7 +57,7 @@ export function rrfMerge(lists: RetrievalCandidate[][], topK: number): Retrieval
   for (const list of lists) {
     for (let rank = 0; rank < list.length; rank++) {
       const candidate = list[rank]!;
-      const key = candidate.entityId ?? candidate.content;
+      const key = candidate.contentHash ?? candidate.content;
       const rrfScore = 1 / (RRF_K + rank + 1);
 
       const existing = scoreMap.get(key);

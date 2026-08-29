@@ -90,6 +90,7 @@ export class RunsService {
         neo4jWriter: {
           mergeEntity: async () => {},
           mergeRelationship: async () => {},
+          mergeFact: async () => {},
         },
         pgvectorWriter: {
           upsertFact: async () => {},
@@ -158,6 +159,7 @@ export class RunsService {
         neo4jWriter: {
           mergeEntity: async () => {},
           mergeRelationship: async () => {},
+          mergeFact: async () => {},
         },
         pgvectorWriter: {
           upsertFact: async () => {},

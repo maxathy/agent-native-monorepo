@@ -25,6 +25,8 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
   let neo4jDriver: Driver;
   let pgPool: pg.Pool;
   let facade: HybridRetrievalFacade;
+  let neo4jReader: CypherNeo4jReader;
+  let pgReader: PgPgvectorReader;
 
   beforeAll(async () => {
     neo4jDriver = neo4j.driver(NEO4J_URI!, neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD));
@@ -93,9 +95,26 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
       sessionId: '550e8400-e29b-41d4-a716-446655440001',
     });
 
+    // Seed the same facts into Neo4j, keyed on the hashes pgvector used. This
+    // is what gives the two retrievers one candidate universe: the graph
+    // traversal reaches a :Fact, not a :Concept, so a fact both paths find is
+    // one candidate and RRF sums its ranks.
+    await neo4jWriter.mergeFact({
+      contentHash: 'sha256-facade-test-1',
+      text: 'LangGraph enables stateful agent workflows with memory.',
+      episodeId: '550e8400-e29b-41d4-a716-446655440000',
+      entityIds: ['langgraph'],
+    });
+    await neo4jWriter.mergeFact({
+      contentHash: 'sha256-facade-graph-only',
+      text: 'Graph traversal reaches facts no vector search returned.',
+      episodeId: '550e8400-e29b-41d4-a716-446655440000',
+      entityIds: ['memory'],
+    });
+
     // Build the facade
-    const neo4jReader = new CypherNeo4jReader(neo4jDriver);
-    const pgReader = new PgPgvectorReader(pgPool);
+    neo4jReader = new CypherNeo4jReader(neo4jDriver);
+    pgReader = new PgPgvectorReader(pgPool);
     facade = new HybridRetrievalFacade(pgReader, neo4jReader);
   });
 
@@ -120,6 +139,36 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
     // Both sources should contribute candidates
     expect(sources.has('pgvector')).toBe(true);
     expect(sources.has('neo4j')).toBe(true);
+  });
+
+  it('sums the reciprocal ranks of a fact both retrievers found', async () => {
+    const queryEmbedding = new Array(EMBEDDING_DIMENSIONS)
+      .fill(0)
+      .map((_, i) => Math.sin((i + 1) * 0.01));
+    const fused = 'sha256-facade-test-1';
+
+    // Take the ranks from the readers themselves rather than hardcoding them,
+    // so the assertion is about fusion and not about seed ordering.
+    const [pgList, neoList] = await Promise.all([
+      pgReader.searchByCosine(queryEmbedding, 20),
+      neo4jReader.expandFromSeeds(['langgraph'], 2),
+    ]);
+    const pgRank = pgList.findIndex((c) => c.contentHash === fused);
+    const neoRank = neoList.findIndex((c) => c.contentHash === fused);
+
+    expect(pgRank).toBeGreaterThanOrEqual(0);
+    expect(neoRank).toBeGreaterThanOrEqual(0);
+
+    const results = await facade.retrieve({
+      queryEmbedding,
+      seedEntityIds: ['langgraph'],
+      topK: 10,
+      hopDepth: 2,
+    });
+
+    const matches = results.filter((r) => r.contentHash === fused);
+    expect(matches).toHaveLength(1);
+    expect(matches[0]!.score).toBeCloseTo(1 / (60 + pgRank + 1) + 1 / (60 + neoRank + 1), 12);
   });
 
   it('returns RRF scores in monotonically decreasing order', async () => {

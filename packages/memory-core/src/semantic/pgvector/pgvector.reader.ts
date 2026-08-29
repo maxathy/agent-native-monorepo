@@ -28,10 +28,13 @@ export class PgPgvectorReader implements PgvectorReader {
         );
 
         const candidates: RetrievalCandidate[] = result.rows.map(
-          (row: { text: string; score: number; episode_id: string }) => ({
+          (row: { content_hash: string; text: string; score: number; episode_id: string }) => ({
             source: 'pgvector' as const,
             score: row.score,
             content: row.text,
+            // The query has always selected content_hash; returning it is what
+            // lets RRF recognise a fact that both retrievers found.
+            contentHash: row.content_hash,
             episodeId: row.episode_id,
           }),
         );

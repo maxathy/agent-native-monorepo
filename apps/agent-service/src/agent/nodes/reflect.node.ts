@@ -74,7 +74,11 @@ export async function reflectNode(
         });
       }
 
-      // Step 4: Upsert distilled facts into pgvector (idempotent)
+      // Step 4: Upsert distilled facts into both indices, keyed on the same
+      // content hash (idempotent). The Neo4j copy is what gives the graph and
+      // vector retrievers one candidate universe to fuse over — see ADR 0004.
+      const entityIds = extraction.entities.map((entity) => entity.id);
+
       for (const fact of extraction.facts) {
         const contentHash = createHash('sha256').update(fact.text).digest('hex');
         const embedding = await deps.embedText(fact.text);
@@ -85,6 +89,13 @@ export async function reflectNode(
           embedding,
           episodeId: state.runId,
           sessionId: state.sessionId,
+        });
+
+        await deps.neo4jWriter.mergeFact({
+          contentHash,
+          text: fact.text,
+          episodeId: state.runId,
+          entityIds,
         });
       }
 

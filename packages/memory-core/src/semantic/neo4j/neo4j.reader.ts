@@ -24,14 +24,20 @@ export class CypherNeo4jReader implements Neo4jReader {
 
         const session = this.driver.session();
         try {
-          // Bounded multi-hop traversal from seed entities
+          // Bounded multi-hop traversal from the seed concepts to the facts
+          // that mention them. The traversal is over :Concept — that is where
+          // the relational structure is — but what comes back is a :Fact, so
+          // this list and pgvector's describe the same kind of thing and RRF
+          // has one universe to fuse over. `*0..n` lets a fact attached
+          // directly to a seed count; the MENTIONS hop puts it at distance 1.
           const result = await session.run(
-            `MATCH path = (seed:Concept)-[:RELATES_TO*1..${Math.min(hopDepth, 3)}]-(related:Concept)
-             WHERE seed.id IN $seedIds AND related.id <> seed.id
-             WITH related, min(length(path)) AS distance
-             RETURN DISTINCT related.id AS entityId,
-                    related.label AS label,
-                    related.description AS description,
+            `MATCH path = (seed:Concept)-[:RELATES_TO*0..${Math.min(hopDepth, 3)}]-(related:Concept)
+                          <-[:MENTIONS]-(f:Fact)
+             WHERE seed.id IN $seedIds
+             WITH f, min(length(path)) AS distance
+             RETURN DISTINCT f.contentHash AS contentHash,
+                    f.text AS text,
+                    f.episodeId AS episodeId,
                     distance,
                     1.0 / (1.0 + distance) AS score
              ORDER BY score DESC
@@ -42,9 +48,9 @@ export class CypherNeo4jReader implements Neo4jReader {
           const candidates: RetrievalCandidate[] = result.records.map((record) => ({
             source: 'neo4j' as const,
             score: record.get('score') as number,
-            content:
-              `${record.get('label') as string}: ${(record.get('description') as string) ?? ''}`.trim(),
-            entityId: record.get('entityId') as string,
+            content: record.get('text') as string,
+            contentHash: record.get('contentHash') as string,
+            episodeId: (record.get('episodeId') as string | null) ?? undefined,
           }));
 
           span.setAttribute('resultCount', candidates.length);
