@@ -15,8 +15,9 @@ import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 import { buildAgentGraph, type GraphDeps } from '../agent/graph/graph.js';
 import { buildRunResponse } from '../agent/nodes/egress.node.js';
-import type { AgentState, Extraction } from '../agent/graph/state.js';
+import type { AgentState } from '../agent/graph/state.js';
 import { createGeminiEmbedder } from '../agent/model/gemini-embedder.js';
+import { EXTRACTION_PROMPT, parseExtraction } from '../agent/model/extraction.js';
 import {
   EPISODIC_REPOSITORY,
   NEO4J_WRITER,
@@ -29,11 +30,6 @@ import type { DistillNodeDeps } from '../agent/nodes/distill.node.js';
 import type { PlanNodeDeps } from '../agent/nodes/plan.node.js';
 
 const logger = createLogger('runs-service');
-
-const EXTRACTION_PROMPT = `Extract entities, relationships, and facts from the conversation. Respond with JSON:
-{"entities": [{"id": "...", "label": "...", "description": "..."}], "relationships": [{"fromId": "...", "toId": "...", "type": "...", "confidence": 0.9}], "facts": [{"text": "..."}]}`;
-
-const EMPTY_EXTRACTION: Extraction = { entities: [], relationships: [], facts: [] };
 
 /** The model half of a dependency set: everything that costs a model call. */
 interface ModelDeps {
@@ -93,22 +89,31 @@ export class RunsService {
   }
 
   private createGeminiModelDeps(apiKey: string): ModelDeps {
-    const llm = new ChatGoogleGenerativeAI({ model: 'gemini-2.5-flash', apiKey });
+    // Two instances of the same model. `json: true` sets Gemini's
+    // `responseMimeType: application/json`, which is what stops it wrapping a
+    // JSON answer in a ```json fence. `plan` wants prose and must not have it;
+    // the two callers that parse a response must.
+    const prose = new ChatGoogleGenerativeAI({ model: 'gemini-2.5-flash', apiKey });
+    const json = new ChatGoogleGenerativeAI({ model: 'gemini-2.5-flash', apiKey, json: true });
 
-    const callLlm = async (systemPrompt: string, userPrompt: string) => {
-      const response = await llm.invoke([
-        new SystemMessage(systemPrompt),
-        new HumanMessage(userPrompt),
-      ]);
-      const meta = response.usage_metadata;
-      return {
-        content: typeof response.content === 'string' ? response.content : '',
-        tokenCounts: {
-          prompt: meta?.input_tokens ?? 0,
-          completion: meta?.output_tokens ?? 0,
-        },
+    const callWith =
+      (llm: ChatGoogleGenerativeAI) => async (systemPrompt: string, userPrompt: string) => {
+        const response = await llm.invoke([
+          new SystemMessage(systemPrompt),
+          new HumanMessage(userPrompt),
+        ]);
+        const meta = response.usage_metadata;
+        return {
+          content: typeof response.content === 'string' ? response.content : '',
+          tokenCounts: {
+            prompt: meta?.input_tokens ?? 0,
+            completion: meta?.output_tokens ?? 0,
+          },
+        };
       };
-    };
+
+    const callLlm = callWith(prose);
+    const callJson = callWith(json);
 
     return {
       plan: { callLlm },
@@ -121,7 +126,7 @@ export class RunsService {
         ],
         selectTool: async (plan, tools) => {
           const toolNames = tools.map((t) => t.name).join(', ');
-          const response = await callLlm(
+          const response = await callJson(
             'You select the best tool for a task. Respond with JSON: {"toolName": "...", "input": ...} or null if no tool is needed.',
             `Plan: ${plan}\nAvailable tools: ${toolNames}`,
           );
@@ -134,12 +139,8 @@ export class RunsService {
       },
       distill: {
         extractEntities: async (context: string) => {
-          const response = await callLlm(EXTRACTION_PROMPT, context);
-          try {
-            return JSON.parse(response.content) as Extraction;
-          } catch {
-            return EMPTY_EXTRACTION;
-          }
+          const response = await callJson(EXTRACTION_PROMPT, context);
+          return parseExtraction(response.content);
         },
       },
       embed: createGeminiEmbedder(apiKey),
