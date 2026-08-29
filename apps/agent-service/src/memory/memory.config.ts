@@ -30,10 +30,22 @@ export function readMemoryConfig(env: NodeJS.ProcessEnv = process.env): MemoryCo
 
   if (!databaseUrl && !neo4jUri) return null;
 
-  return MemoryConfigSchema.parse({
+  const parsed = MemoryConfigSchema.safeParse({
     databaseUrl,
     neo4jUri,
     neo4jUser: env['NEO4J_USER'] ?? 'neo4j',
     neo4jPassword: env['NEO4J_PASSWORD'] ?? 'password',
   });
+
+  if (!parsed.success) {
+    // Named rather than re-raised as a ZodError, because this is read by
+    // whoever is holding a half-written .env, not by a client.
+    const missing = parsed.error.issues.map((issue) => issue.path.join('.')).join(', ');
+    throw new Error(
+      `Memory is partially configured: ${missing} is missing or empty. ` +
+        'Set DATABASE_URL and NEO4J_URI together, or neither to run without memory.',
+    );
+  }
+
+  return parsed.data;
 }

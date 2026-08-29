@@ -10,7 +10,11 @@ const logger = createLogger('main');
 async function bootstrap(): Promise<void> {
   initTelemetry('agent-service');
 
-  const app = await NestFactory.create(AppModule);
+  // Nest aborts the process (SIGABRT, exit 134, a core dump and no message)
+  // when a provider factory throws during initialization. A misconfigured
+  // memory axis is a configuration mistake, and the operator needs to read
+  // which variable was wrong — not a native stack trace.
+  const app = await NestFactory.create(AppModule, { abortOnError: false });
 
   app.useGlobalPipes(new ZodValidationPipe(RunRequestSchema));
   app.enableCors();
@@ -27,6 +31,9 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((err: unknown) => {
-  logger.error({ msg: 'agent-service.fatal', error: err });
+  logger.error({
+    msg: 'agent-service.fatal',
+    error: err instanceof Error ? err.message : String(err),
+  });
   process.exit(1);
 });
