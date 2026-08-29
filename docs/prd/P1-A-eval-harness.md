@@ -292,7 +292,12 @@ graph.
       rather than passing it.
 - [x] The suite is verified once end to end on the live model axis, with `GOOGLE_API_KEY`
       reaching the trial process, and the command that runs trials declares it wherever
-      Turbo would otherwise strip it.
+      Turbo would otherwise strip it. **Verified with the suite at one task.**
+      `tool-use-001` was added after that run and has never executed on the live model axis,
+      because the free-tier quota is 20 `generateContent` requests and a 5×2 suite needs
+      about forty. What this tick proves is the path — key reaches the trial process, Turbo
+      does not strip it, a live trial grades against live stores. It is not the two-task
+      suite's live pass rate, and the risk below owns the difference.
 - [x] The runner executes n trials per task and reports `pass@k` and `pass^k`.
 - [x] A trajectory grader reports precision and recall over the node sequence and over the
       tool-call sequence, and an errored tool call counts as a call that did not succeed.
