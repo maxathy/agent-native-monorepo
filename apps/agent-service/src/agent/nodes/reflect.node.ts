@@ -9,26 +9,22 @@ export interface ReflectNodeDeps {
   episodicRepo: EpisodicRepository;
   neo4jWriter: Neo4jWriter;
   pgvectorWriter: PgvectorWriter;
-  extractEntities: (context: string) => Promise<{
-    entities: Array<{ id: string; label: string; description?: string }>;
-    relationships: Array<{
-      fromId: string;
-      toId: string;
-      type: string;
-      confidence: number;
-    }>;
-    facts: Array<{ text: string }>;
-  }>;
   embedText: (text: string) => Promise<number[]>;
 }
 
 /**
- * The reflect node is the sole writer to Episodic and Semantic memory.
- * All four operations are idempotent and crash-safe:
- * 1. Write messages to Episodic
- * 2. Extract entities/relationships via LLM
- * 3. MERGE entities and relationships into Neo4j
- * 4. Upsert distilled facts into pgvector
+ * The sole writer to Episodic and Semantic memory. Pure I/O over idempotent
+ * operations, and a function of `state.extraction` — which `distill` produced
+ * — so a retried attempt writes exactly what the first attempt wrote.
+ *
+ * 1. Write messages to Episodic, keyed on (session_id, turn_index)
+ * 2. MERGE entities and relationships into Neo4j
+ * 3. Upsert facts into pgvector and the graph, keyed on the same content hash
+ *
+ * The guarantee is convergence under replay, not atomicity across the two
+ * indices. ADR 0001 ruled out the mechanism that would give the latter: a
+ * crash between the Neo4j write and the pgvector write leaves them disagreeing
+ * until the retry, not permanently.
  */
 export async function reflectNode(
   state: AgentState,
@@ -53,15 +49,20 @@ export async function reflectNode(
         });
       }
 
-      // Step 2: Extract entities and relationships from session context
-      const sessionContext = state.messages.map((m) => `${m.role}: ${m.content}`).join('\n');
+      // `distill` runs immediately before this node and always sets it. An
+      // absent extraction means the channel was dropped between nodes — the
+      // failure mode of forgetting a key in AgentStateAnnotation — and is
+      // worth failing on rather than silently writing nothing.
+      const extraction = state.extraction;
+      if (!extraction) {
+        throw new Error('reflect: state.extraction is missing — distill did not run');
+      }
 
-      const extraction = await deps.extractEntities(sessionContext);
       span.setAttribute('entity_count', extraction.entities.length);
       span.setAttribute('relationship_count', extraction.relationships.length);
       span.setAttribute('fact_count', extraction.facts.length);
 
-      // Step 3: MERGE entities and relationships into Neo4j (idempotent)
+      // Step 2: MERGE entities and relationships into Neo4j (idempotent)
       for (const entity of extraction.entities) {
         await deps.neo4jWriter.mergeEntity(entity);
       }
@@ -74,7 +75,7 @@ export async function reflectNode(
         });
       }
 
-      // Step 4: Upsert distilled facts into both indices, keyed on the same
+      // Step 3: Upsert distilled facts into both indices, keyed on the same
       // content hash (idempotent). The Neo4j copy is what gives the graph and
       // vector retrievers one candidate universe to fuse over — see ADR 0004.
       const entityIds = extraction.entities.map((entity) => entity.id);

@@ -20,6 +20,9 @@ function makeDeps(): GraphDeps {
       callLlm: async () => ({ content: 'a plan', tokenCounts: { prompt: 0, completion: 0 } }),
     },
     act: { tools: [], selectTool: async () => null },
+    distill: {
+      extractEntities: async () => ({ entities: [], relationships: [], facts: [] }),
+    },
     reflect: {
       episodicRepo: {
         write: async () => ({ id: '550e8400-e29b-41d4-a716-446655440002' }),
@@ -31,7 +34,6 @@ function makeDeps(): GraphDeps {
         mergeFact: async () => {},
       },
       pgvectorWriter: { upsertFact: async () => {} },
-      extractEntities: async () => ({ entities: [], relationships: [], facts: [] }),
       embedText: embedding,
     },
   };
@@ -49,12 +51,57 @@ describe('buildAgentGraph', () => {
     expect(typeof compiled.stream).toBe('function');
   });
 
-  it('registers all six nodes without colliding with a state channel', () => {
+  it('registers all seven nodes without colliding with a state channel', () => {
     const compiled = buildAgentGraph(makeDeps(), {}, 'corr-123');
     const nodes = Object.keys(compiled.getGraph().nodes)
       .filter((name) => !name.startsWith('__'))
       .sort();
 
-    expect(nodes).toEqual(['act', 'egress', 'ingress', 'plan', 'reflect', 'retrieve']);
+    // `distill` is the seventh. `extraction` is the channel it writes and
+    // `distill` is the node — the separation P0-A's rename established, and
+    // the collision this test exists to catch.
+    expect(nodes).toEqual([
+      'act',
+      'distill',
+      'egress',
+      'ingress',
+      'plan',
+      'reflect',
+      'retrieve',
+    ]);
+  });
+
+  it('carries `extraction` as a state channel, so reflect can read it', async () => {
+    // A key present in AgentStateSchema but absent from AgentStateAnnotation
+    // is dropped between nodes, and the failure mode is a `reflect` that
+    // silently writes nothing.
+    const written: string[] = [];
+    const deps = makeDeps();
+    deps.distill = {
+      extractEntities: async () => ({
+        entities: [{ id: 'langgraph', label: 'LangGraph' }],
+        relationships: [],
+        facts: [{ text: 'A fact worth keeping.' }],
+      }),
+    };
+    deps.reflect.neo4jWriter = {
+      mergeEntity: async (entity) => {
+        written.push(entity.id);
+      },
+      mergeRelationship: async () => {},
+      mergeFact: async () => {},
+    };
+
+    const compiled = buildAgentGraph(
+      deps,
+      {
+        sessionId: '550e8400-e29b-41d4-a716-446655440000',
+        messages: [{ role: 'user', content: 'What is LangGraph?' }],
+      },
+      'corr-123',
+    );
+    await compiled.invoke({ runId: '550e8400-e29b-41d4-a716-446655440003' });
+
+    expect(written).toEqual(['langgraph']);
   });
 });
