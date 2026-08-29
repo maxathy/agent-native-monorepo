@@ -93,7 +93,6 @@ export class RunsService {
         },
         pgvectorWriter: {
           upsertFact: async () => {},
-          ensureTable: async () => {},
         },
         extractEntities: async (context: string) => {
           const response = await callLlm(
@@ -162,7 +161,6 @@ export class RunsService {
         },
         pgvectorWriter: {
           upsertFact: async () => {},
-          ensureTable: async () => {},
         },
         extractEntities: async () => ({
           entities: [

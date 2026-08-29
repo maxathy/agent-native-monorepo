@@ -26,7 +26,7 @@ function makeDeps(): GraphDeps {
         findBySession: async () => [],
       },
       neo4jWriter: { mergeEntity: async () => {}, mergeRelationship: async () => {} },
-      pgvectorWriter: { upsertFact: async () => {}, ensureTable: async () => {} },
+      pgvectorWriter: { upsertFact: async () => {} },
       extractEntities: async () => ({ entities: [], relationships: [], facts: [] }),
       embedText: embedding,
     },

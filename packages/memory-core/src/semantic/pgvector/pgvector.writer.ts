@@ -16,24 +16,10 @@ export const FactUpsertSchema = z.object({
 
 export interface PgvectorWriter {
   upsertFact(fact: z.infer<typeof FactUpsertSchema>): Promise<void>;
-  ensureTable(): Promise<void>;
 }
 
 export class PgPgvectorWriter implements PgvectorWriter {
   constructor(private readonly pool: pg.Pool) {}
-
-  async ensureTable(): Promise<void> {
-    await this.pool.query(`
-      CREATE TABLE IF NOT EXISTS semantic_facts (
-        content_hash TEXT PRIMARY KEY,
-        text TEXT NOT NULL,
-        embedding vector(768) NOT NULL,
-        episode_id UUID NOT NULL,
-        session_id UUID NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-  }
 
   async upsertFact(fact: z.infer<typeof FactUpsertSchema>): Promise<void> {
     const validated = FactUpsertSchema.parse(fact);

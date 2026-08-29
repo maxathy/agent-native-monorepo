@@ -13,7 +13,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 import neo4j from 'neo4j-driver';
-import { EMBEDDING_DIMENSIONS } from '@repo/memory-core';
+import { EMBEDDING_DIMENSIONS, runMigrations } from '@repo/memory-core';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const fixturesDir = join(__dirname, '..', 'apps', 'agent-service', 'test', 'fixtures');
@@ -32,18 +32,9 @@ const pool = new pg.Pool({ connectionString: DATABASE_URL });
 const driver = neo4j.driver(NEO4J_URI, neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD));
 
 try {
-  // Ensure pgvector extension and table
-  await pool.query('CREATE EXTENSION IF NOT EXISTS vector');
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS semantic_facts (
-      content_hash TEXT PRIMARY KEY,
-      text TEXT NOT NULL,
-      embedding vector(768) NOT NULL,
-      episode_id UUID NOT NULL,
-      session_id UUID NOT NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    )
-  `);
+  // The migration owns the schema. Seeding against a hand-rolled copy is how
+  // the eval fixtures ended up in a table shaped differently from production's.
+  await runMigrations(pool);
 
   const fixtures = readdirSync(fixturesDir).filter((f) => f.endsWith('.json'));
 

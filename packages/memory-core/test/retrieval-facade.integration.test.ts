@@ -7,6 +7,7 @@ import { PgPgvectorWriter } from '../src/semantic/pgvector/pgvector.writer.js';
 import { PgPgvectorReader } from '../src/semantic/pgvector/pgvector.reader.js';
 import { HybridRetrievalFacade } from '../src/semantic/retrieval-facade.js';
 import { EMBEDDING_DIMENSIONS } from '../src/semantic/embedding.js';
+import { runMigrations } from '../src/migrate.js';
 import { skipUnlessIntegrationEnv } from './integration-env.js';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
@@ -29,18 +30,7 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
     neo4jDriver = neo4j.driver(NEO4J_URI!, neo4j.auth.basic(NEO4J_USER, NEO4J_PASSWORD));
     pgPool = new pg.Pool({ connectionString: DATABASE_URL });
 
-    // Setup tables and extensions
-    await pgPool.query('CREATE EXTENSION IF NOT EXISTS vector');
-    await pgPool.query(`
-      CREATE TABLE IF NOT EXISTS semantic_facts (
-        content_hash TEXT PRIMARY KEY,
-        text TEXT NOT NULL,
-        embedding vector(768) NOT NULL,
-        episode_id UUID NOT NULL,
-        session_id UUID NOT NULL,
-        created_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
+    await runMigrations(pgPool);
 
     // Clear prior test data
     const session = neo4jDriver.session();

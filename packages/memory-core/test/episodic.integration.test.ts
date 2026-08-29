@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
-import { sql } from 'drizzle-orm';
 import { DrizzleEpisodicRepository } from '../src/episodic/episodic.repo.js';
+import { runMigrations } from '../src/migrate.js';
 import { episodes } from '../src/episodic/schema.js';
 import { skipUnlessIntegrationEnv } from './integration-env.js';
 
@@ -19,19 +19,9 @@ describe.skipIf(SKIP)('DrizzleEpisodicRepository (integration)', () => {
     pool = new pg.Pool({ connectionString: DATABASE_URL });
     db = drizzle(pool);
 
-    // Create the episodes table for testing
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS episodes (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        session_id UUID NOT NULL,
-        run_id UUID NOT NULL,
-        turn_index INTEGER NOT NULL,
-        role TEXT NOT NULL,
-        content TEXT NOT NULL,
-        metadata JSONB,
-        created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
-      )
-    `);
+    // The migration is the only DDL for this table. A test that creates its
+    // own can drift from the one production runs against.
+    await runMigrations(pool);
 
     // Clean up any prior test data
     await db.delete(episodes);

@@ -8,6 +8,9 @@ export {
   addTokenCounts,
 } from './working/index.js';
 
+// Schema ownership — the only DDL for `episodes` and `semantic_facts`
+export { runMigrations } from './migrate.js';
+
 // Episodic Memory — session-scoped, Postgres + Drizzle
 export { episodes } from './episodic/schema.js';
 export {
