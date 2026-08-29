@@ -43,13 +43,6 @@ file this tier exists to produce, and the rule that keeps it current is in
 `.context/conventions.md` and `.agents/reviewer.md`: a change that moves a row moves it
 there in the same pull request.
 
-**One live defect is parked, not fixed.** With a `GOOGLE_API_KEY` set, `POST /runs`
-returns 500 and `POST /runs/stream` stops after the `ingress` frame — `text-embedding-004`
-is retired. The replacement changes the embedding dimension, and 768 is hardcoded in
-`pgvector.writer.ts`, `retrieval-facade.ts`, and `scripts/seed-eval-fixtures.mjs`. That
-makes it P2-A's. The README no longer instructs anyone to set the key, and it is row 16 of
-`docs/STATUS.md`.
-
 **[P2-A](P2-A-wire-memory-core.md) is shipped, and the architecture is a running system
 rather than a design.** `MemoryModule` constructs the pool, the driver, the four adapters,
 the facade and the checkpointer; `RunsService` injects them. Verified against live stores
@@ -82,13 +75,27 @@ changes ADR 0002's account of why fusion failed, which blamed the key; the key w
 symptom. [ADR 0004](../adr/0004-one-candidate-universe-for-fusion.md) records the decision
 without superseding 0002's still-correct choice to run both stores.
 
-**One acceptance criterion is unmet, and it is a credential rather than a defect.** The
-retired `text-embedding-004` is gone and embeddings call `gemini-embedding-001` with an
-explicit output dimensionality, but no run with a live key has been observed returning 200
-— the key in this working tree answers `403 PERMISSION_DENIED — Your API key was reported
-as leaked`. Row 16 of `docs/STATUS.md` therefore stays `broken`, and P1-E owns closing it.
-The retry policy did behave correctly against that 403: a 4xx fails on the first attempt
-rather than three.
+**P2-A shipped, was reopened the same day, and shipped again. All twenty-four criteria are
+met.** Two ticks were wrong, for one shared reason: acceptance was verified on the stub
+model axis and the live model axis was never exercised. The block was environmental —
+nothing on the Node path read `.env`, so a revoked key exported from a shell rc shadowed the
+valid one in the file, and every live call returned `403`. That was recorded as a credential
+problem owned by P1-E. It was not.
+
+With a working key the live axis exposed a defect the stub axis structurally could not.
+`distill` parsed the model response with `try { JSON.parse(...) } catch { return
+EMPTY_EXTRACTION }`, and `gemini-2.5-flash` fences JSON unless
+`responseMimeType: application/json` is set — so every live extraction threw, every catch
+returned an empty set, and `reflect` wrote none of it while the run reported
+`outcome: "success"`. The same defect class this PRD exists to remove, in the axis nobody
+was watching. Both are fixed: the service reads `.env` and names any variable the
+environment shadows, and a malformed extraction now throws an error the retry policy
+retries. Verified live — one run writes 18 facts at 768 dimensions and L2 norm exactly
+`1.000000`, 22 `:Concept` and 18 `:Fact`. Row 16 is `implemented`.
+
+**The rule that came out of it: a criterion verified on a stub is verified against the half
+of the system that cannot fail.** Where a PRD names two independent axes, its criteria have
+to say which axis they were checked on. That is now in `.agents/prd-author.md`.
 
 **A written convention had to move, not just the code.** `.context/conventions.md` said
 containing failure inside the node was the intent and told the next reader not to widen the

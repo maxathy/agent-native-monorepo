@@ -46,6 +46,22 @@ owns it. Ticking a box and appending an explanation is how `shipped` stops meani
 anything — and `yarn lint:docs` fails a `shipped` PRD whose unchecked criteria name no
 owner, so the deferral has to be explicit.
 
+**A criterion verified on a stub is verified against the half of the system that cannot
+fail.** Where the design names two independent axes — a model axis and a memory axis, a
+live store and an in-process fake — every criterion has to say which axis it was checked on,
+and a criterion that can only be checked on one of them is not met. P2-A shipped with two
+ticks earned on the stub model axis. The live axis then produced neither a `:Concept` nor a
+`semantic_facts` row on any run, because the real model fenced its JSON and the parse
+failure was being swallowed. The stub's canned response always parsed, so the acceptance run
+could not have caught it.
+
+**When a criterion looks blocked on the environment, verify the environment.** The same PRD
+recorded "the key is leaked, so this is unverifiable" and handed the criterion to another
+PRD. The key was valid; nothing on the Node path read `.env`, and a stale export from a
+shell rc was shadowing it. An hour of a later session went to a defect that a two-minute
+check would have found — and the criterion, once actually run, failed for an entirely
+different reason.
+
 **Non-goals name their successor.** If the PRD defers something, say which PRD picks it up.
 An unowned deferral is a gap, not a scope decision.
 
