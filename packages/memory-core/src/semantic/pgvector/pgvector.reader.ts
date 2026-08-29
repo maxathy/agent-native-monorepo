@@ -56,9 +56,7 @@ export class PgPgvectorReader implements PgvectorReader {
                FROM semantic_facts
                ORDER BY embedding <=> $1::vector
                LIMIT $2`,
-          scoped
-            ? [toSql(queryEmbedding), topK, scope.sessionId]
-            : [toSql(queryEmbedding), topK],
+          scoped ? [toSql(queryEmbedding), topK, scope.sessionId] : [toSql(queryEmbedding), topK],
         );
 
         const candidates: RetrievalCandidate[] = result.rows.map(

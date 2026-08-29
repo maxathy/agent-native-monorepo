@@ -191,15 +191,15 @@ node is only safe to retry when it is a function of its input state, and a `refl
 extracted its own entities was not: a second attempt could word a fact differently, change
 its hash, and write an extra row rather than converging on the first attempt's.
 
-| Node       | Purpose                         | Key Input Fields               | Key Output Fields            | Side Effects                              |
-| ---------- | ------------------------------- | ------------------------------ | ---------------------------- | ----------------------------------------- |
-| `ingress`  | Validate request, seed state    | Raw HTTP body                  | Full `AgentState`            | None                                      |
-| `retrieve` | Hybrid semantic recall          | `messages`, `topK`, `hopDepth` | `retrievedContext`           | pgvector search, Neo4j traversal          |
-| `plan`     | LLM planning step               | `messages`, `retrievedContext` | `currentPlan`, `messages`, `tokenCounts` | LLM API call                  |
-| `act`      | Tool execution loop             | `currentPlan`                  | `toolOutputs`, `stepCount`   | Tool invocations                          |
-| `distill`  | Extract entities and facts      | `messages`                     | `extraction`                 | LLM API call                              |
-| `reflect`  | Memory consolidation            | `messages`, `extraction`       | _(none — side-effect node)_  | Episodic insert, Neo4j MERGE, pgvector upsert |
-| `egress`   | Validate output, build response | Full state                     | `outcome`                    | None                                      |
+| Node       | Purpose                         | Key Input Fields               | Key Output Fields                        | Side Effects                                  |
+| ---------- | ------------------------------- | ------------------------------ | ---------------------------------------- | --------------------------------------------- |
+| `ingress`  | Validate request, seed state    | Raw HTTP body                  | Full `AgentState`                        | None                                          |
+| `retrieve` | Hybrid semantic recall          | `messages`, `topK`, `hopDepth` | `retrievedContext`                       | pgvector search, Neo4j traversal              |
+| `plan`     | LLM planning step               | `messages`, `retrievedContext` | `currentPlan`, `messages`, `tokenCounts` | LLM API call                                  |
+| `act`      | Tool execution loop             | `currentPlan`                  | `toolOutputs`, `stepCount`               | Tool invocations                              |
+| `distill`  | Extract entities and facts      | `messages`                     | `extraction`                             | LLM API call                                  |
+| `reflect`  | Memory consolidation            | `messages`, `extraction`       | _(none — side-effect node)_              | Episodic insert, Neo4j MERGE, pgvector upsert |
+| `egress`   | Validate output, build response | Full state                     | `outcome`                                | None                                          |
 
 ---
 

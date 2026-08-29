@@ -45,10 +45,7 @@ export async function planNode(
         // after `ingress`, so `RunResponse.messages` echoed the request back
         // and `reflect` persisted a conversation with only one side of it —
         // against an Episodic tier specified to hold the full turn history.
-        messages: [
-          ...state.messages,
-          { role: 'assistant' as const, content: response.content },
-        ],
+        messages: [...state.messages, { role: 'assistant' as const, content: response.content }],
         tokenCounts: {
           prompt: state.tokenCounts.prompt + response.tokenCounts.prompt,
           completion: state.tokenCounts.completion + response.tokenCounts.completion,

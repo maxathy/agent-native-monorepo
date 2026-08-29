@@ -19,7 +19,7 @@ returned `:Concept` nodes — an entity id, a label, a description. `searchByCos
 rows from `semantic_facts` — a fact's text. No key can make two lists intersect when the
 same fact cannot appear in both: the graph held no facts to return.
 
-RRF's premise is that two rankers score *the same candidates* differently. Two rankers over
+RRF's premise is that two rankers score _the same candidates_ differently. Two rankers over
 disjoint universes produce a concatenation, and sorting it by reciprocal rank interleaves
 them. That is what the implementation did, and it would have kept doing it under any key.
 
@@ -50,7 +50,7 @@ and each create it.
 
 This does not supersede ADR 0002. The decision to run both stores stands, and so does the
 choice of RRF over score normalization — the two sources still produce incomparable scores,
-and RRF still only needs rank. What changes is ADR 0002's account of *why* fusion was not
+and RRF still only needs rank. What changes is ADR 0002's account of _why_ fusion was not
 working, which this record replaces: the key was wrong, but the key was not the cause.
 
 The graph now carries every distilled fact, which is duplication — the text lives in

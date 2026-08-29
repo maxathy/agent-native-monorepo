@@ -133,7 +133,9 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
   });
 
   it('returns candidates from both Neo4j and pgvector', async () => {
-    const queryEmbedding = new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
+    const queryEmbedding = new Array(EMBEDDING_DIMENSIONS)
+      .fill(0)
+      .map((_, i) => Math.sin((i + 1) * 0.01));
 
     const results = await facade.retrieve({
       queryEmbedding,
@@ -209,7 +211,9 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
   });
 
   it('returns RRF scores in monotonically decreasing order', async () => {
-    const queryEmbedding = new Array(EMBEDDING_DIMENSIONS).fill(0).map((_, i) => Math.sin((i + 1) * 0.01));
+    const queryEmbedding = new Array(EMBEDDING_DIMENSIONS)
+      .fill(0)
+      .map((_, i) => Math.sin((i + 1) * 0.01));
 
     const results = await facade.retrieve({
       queryEmbedding,

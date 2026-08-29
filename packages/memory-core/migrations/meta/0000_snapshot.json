@@ -66,10 +66,7 @@
         "episodes_session_turn_key": {
           "name": "episodes_session_turn_key",
           "nullsNotDistinct": false,
-          "columns": [
-            "session_id",
-            "turn_index"
-          ]
+          "columns": ["session_id", "turn_index"]
         }
       },
       "policies": {},

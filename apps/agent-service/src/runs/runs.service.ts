@@ -231,7 +231,12 @@ export class RunsService {
       // simply stops. Containment for a stream is a terminal frame, and the
       // error must not escape this method.
       const message = error instanceof Error ? error.message : String(error);
-      logger.error({ msg: 'run.stream.failed', correlationId: params.correlationId, runId, error: message });
+      logger.error({
+        msg: 'run.stream.failed',
+        correlationId: params.correlationId,
+        runId,
+        error: message,
+      });
       sendEvent({ node: 'error', error: { node: 'unknown', message } });
     } finally {
       params.res.end();

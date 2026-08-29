@@ -60,15 +60,7 @@ describe('buildAgentGraph', () => {
     // `distill` is the seventh. `extraction` is the channel it writes and
     // `distill` is the node — the separation P0-A's rename established, and
     // the collision this test exists to catch.
-    expect(nodes).toEqual([
-      'act',
-      'distill',
-      'egress',
-      'ingress',
-      'plan',
-      'reflect',
-      'retrieve',
-    ]);
+    expect(nodes).toEqual(['act', 'distill', 'egress', 'ingress', 'plan', 'reflect', 'retrieve']);
   });
 
   it('carries `extraction` as a state channel, so reflect can read it', async () => {

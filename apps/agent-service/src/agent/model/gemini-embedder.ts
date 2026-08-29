@@ -24,8 +24,8 @@ export class EmbeddingRequestError extends Error {
  * through LangChain and embeddings come from here.
  *
  * The response is L2-normalized because a Matryoshka embedding truncated below
- * its native width is not unit-norm: measured at 0.583 for 768 against exactly
- * 1.0 for the native 3072.
+ * its native width is not unit-norm: measured at 0.583 at EMBEDDING_DIMENSIONS
+ * against exactly 1.0 for the native output.
  */
 export function createGeminiEmbedder(apiKey: string): (text: string) => Promise<number[]> {
   return async (text: string): Promise<number[]> => {
