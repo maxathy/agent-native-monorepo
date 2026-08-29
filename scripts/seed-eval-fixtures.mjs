@@ -4,8 +4,14 @@
  * Seed eval fixtures into Postgres (pgvector) and Neo4j for the
  * agent-eval nightly regression suite.
  *
- * Reads JSON fixture files from apps/agent-service/test/fixtures/
- * and populates the databases with the expected seed data.
+ * Reads the task files from `packages/eval-harness/datasets/` and populates the
+ * databases with the seed state each one declares.
+ *
+ * The directory is imported rather than spelled out. It used to be a path
+ * literal pointing into `apps/agent-service/test/fixtures`, and the trap that
+ * comes with that is one-way: move the task file and leave the literal behind
+ * and this script finds nothing, seeds nothing, and reports success — the
+ * nightly workflow's seed step stays green over an empty database.
  *
  * Every write goes through a `@repo/memory-core` adapter. This script used to
  * hand-roll the Cypher and the INSERT, and its own comment recorded what that
@@ -16,10 +22,10 @@
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import pg from 'pg';
 import neo4j from 'neo4j-driver';
+import { EVAL_DATASETS_DIR } from '@repo/eval-harness';
 import {
   EMBEDDING_DIMENSIONS,
   CypherNeo4jWriter,
@@ -29,8 +35,10 @@ import {
   runMigrations,
 } from '@repo/memory-core';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const fixturesDir = join(__dirname, '..', 'apps', 'agent-service', 'test', 'fixtures');
+/** Every dataset directory under `packages/eval-harness/datasets/`. */
+const datasetDirs = readdirSync(EVAL_DATASETS_DIR, { withFileTypes: true })
+  .filter((entry) => entry.isDirectory())
+  .map((entry) => join(EVAL_DATASETS_DIR, entry.name));
 
 const DATABASE_URL = process.env.DATABASE_URL;
 const NEO4J_URI = process.env.NEO4J_URI;
@@ -66,14 +74,18 @@ try {
   const pgvectorWriter = new PgPgvectorWriter(pool);
   const inspector = new PgNeo4jMemoryInspector(pool, driver);
 
-  const fixtures = readdirSync(fixturesDir).filter((f) => f.endsWith('.json'));
+  const fixtures = datasetDirs.flatMap((dir) =>
+    readdirSync(dir)
+      .filter((f) => f.endsWith('.json'))
+      .map((f) => join(dir, f)),
+  );
 
   if (fixtures.length === 0) {
-    throw new Error(`no fixtures found in ${fixturesDir}`);
+    throw new Error(`no task files found under ${EVAL_DATASETS_DIR}`);
   }
 
   for (const file of fixtures) {
-    const fixture = JSON.parse(readFileSync(join(fixturesDir, file), 'utf-8'));
+    const fixture = JSON.parse(readFileSync(file, 'utf-8'));
     const seeds = fixture.expectedSeeds;
 
     if (!seeds) continue;
@@ -119,11 +131,12 @@ try {
     }
 
     console.log(
-      `Seeded fixture: ${file} — ${concepts.length} concept(s), ${facts} semantic_facts row(s)`,
+      `Seeded task: ${fixture.id ?? file} — ${concepts.length} concept(s), ` +
+        `${facts} semantic_facts row(s)`,
     );
   }
 
-  console.log('All fixtures seeded successfully.');
+  console.log(`All ${fixtures.length} task file(s) seeded successfully.`);
 } finally {
   await driver.close();
   await pool.end();

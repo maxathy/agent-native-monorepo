@@ -76,7 +76,7 @@ describe('ModelGrader', () => {
       ...options,
       judge: judge('anthropic', '{"label":"fail","explanation":"claim 2 is unsupported"}'),
     });
-    const score = await grader.grade(transcript, undefined);
+    const score = await grader.grade(transcript);
     expect(score).toEqual({ value: 0, label: 'fail', explanation: 'claim 2 is unsupported' });
   });
 
@@ -84,12 +84,12 @@ describe('ModelGrader', () => {
     // A model grader that silently returns `fail` on a parse error reports the
     // agent as broken when the judge is.
     const grader = new ModelGrader({ ...options, judge: judge('anthropic', 'not json') });
-    await expect(grader.grade(transcript, undefined)).rejects.toThrow();
+    await expect(grader.grade(transcript)).rejects.toThrow();
   });
 
   it('throws when the judge omits the explanation', async () => {
     const grader = new ModelGrader({ ...options, judge: judge('anthropic', '{"label":"pass"}') });
-    await expect(grader.grade(transcript, undefined)).rejects.toThrow(/no explanation/);
+    await expect(grader.grade(transcript)).rejects.toThrow(/no explanation/);
   });
 
   it('reports itself uncalibrated until measured against human labels', async () => {

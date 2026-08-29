@@ -45,6 +45,7 @@
     "vitest/vite": "^7.3.6"
   },
   "dependencies": {
+    "@repo/eval-harness": "workspace:*",
     "@repo/memory-core": "workspace:*"
   }
 }

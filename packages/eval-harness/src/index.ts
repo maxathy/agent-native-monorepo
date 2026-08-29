@@ -64,6 +64,18 @@ export {
   type TrajectoryStep,
 } from './graders/trajectory.js';
 
+// Dataset format and loader.
+export {
+  EVAL_DATASETS_DIR,
+  TaskSpecSchema,
+  type TaskSpec,
+  buildGraders,
+  taskFromSpec,
+  loadTaskSpec,
+  loadSuite,
+  loadMemoryRecallSuite,
+} from './dataset.js';
+
 // Runner.
 export { EvalHarness, type EvalHarnessOptions } from './harness.js';
 

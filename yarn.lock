@@ -2940,7 +2940,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@repo/eval-harness@workspace:packages/eval-harness":
+"@repo/eval-harness@workspace:*, @repo/eval-harness@workspace:packages/eval-harness":
   version: 0.0.0-use.local
   resolution: "@repo/eval-harness@workspace:packages/eval-harness"
   dependencies:
@@ -3989,6 +3989,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "agent-native-monorepo@workspace:."
   dependencies:
+    "@repo/eval-harness": "workspace:*"
     "@repo/memory-core": "workspace:*"
     prettier: "npm:^3.9.6"
     turbo: "npm:^2.10.11"
