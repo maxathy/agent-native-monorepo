@@ -33,3 +33,33 @@ export type { MemoryOutcome } from './outcome.js';
 // Which axis a trial is running on, and the refusal when a grader needs one it
 // does not have.
 export { detectAxes, describeAxes, assertAxesSatisfy, AxisRequirementError } from './axes.js';
+
+// Graders.
+export {
+  retrievedContextMinLength,
+  outcomeMustBe,
+  tokenCountsPositive,
+  episodicRowWritten,
+  entityMerged,
+  factsPersistedToBothIndices,
+} from './graders/code.js';
+export {
+  ModelGrader,
+  SameFamilyJudgeError,
+  humanLabelGrader,
+  type JudgeCalibration,
+  type LabelledExample,
+  type ModelGraderOptions,
+  type ModelJudge,
+} from './graders/model.js';
+export {
+  computeTrajectoryMetrics,
+  nodeSteps,
+  toolSteps,
+  trajectoryGraders,
+  TRAJECTORY_METRICS,
+  type TrajectoryMetricName,
+  type TrajectoryMetrics,
+  type TrajectoryReference,
+  type TrajectoryStep,
+} from './graders/trajectory.js';
