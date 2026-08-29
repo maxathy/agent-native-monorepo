@@ -31,6 +31,27 @@ import type { PlanNodeDeps } from '../agent/nodes/plan.node.js';
 
 const logger = createLogger('runs-service');
 
+/**
+ * One run plus the trajectory `RunResponse` does not carry.
+ *
+ * The contract deliberately returns the conversation and the retrieved context
+ * and nothing about the path taken to produce them, which is right for a client
+ * and useless for an evaluation: `packages/eval-harness` scores the node
+ * sequence and the tool calls, and neither is reachable from the response or
+ * from the SSE frames, which carry a node name and no state.
+ *
+ * `extraction` is here for the same reason. `reflect` writes what `distill`
+ * produced, so the only way to ask "were the concepts this run extracted
+ * actually MERGEd" is to know what it extracted — a count of `:Concept` nodes
+ * cannot attribute one to a run, because `mergeEntity` records no episode on it.
+ */
+export interface TracedRun {
+  readonly response: RunResponse;
+  readonly nodeSequence: string[];
+  readonly toolOutputs: AgentState['toolOutputs'];
+  readonly extraction: AgentState['extraction'];
+}
+
 /** The model half of a dependency set: everything that costs a model call. */
 interface ModelDeps {
   plan: PlanNodeDeps;
@@ -197,6 +218,51 @@ export class RunsService {
     const result = await compiled.invoke({ runId }, { configurable: { thread_id: runId } });
 
     return buildRunResponse(result as unknown as AgentState);
+  }
+
+  /**
+   * `execute`, with the trajectory recorded.
+   *
+   * It streams rather than invokes because the node sequence is only observable
+   * as the updates arrive. Every channel in `AgentStateAnnotation` is a
+   * last-value-wins `Annotation`, so folding the updates in order reconstructs
+   * exactly the state `invoke` would have returned.
+   *
+   * Called by the evaluation harness, not by the HTTP surface. It runs the same
+   * dependency set `execute` does — the same model axis, the same memory axis,
+   * the same checkpointer — because an evaluation that composes its own
+   * dependencies measures a system nobody deploys.
+   */
+  async executeTraced(params: { body: unknown; correlationId: string }): Promise<TracedRun> {
+    const runId = randomUUID();
+    const compiled = buildAgentGraph(
+      this.getDeps(),
+      params.body,
+      params.correlationId,
+      this.checkpointer ?? undefined,
+    );
+
+    logger.info({ msg: 'run.traced.start', correlationId: params.correlationId, runId });
+
+    const nodeSequence: string[] = [];
+    const state: Record<string, unknown> = { runId };
+
+    const stream = await compiled.stream({ runId }, { configurable: { thread_id: runId } });
+    for await (const chunk of stream) {
+      for (const [nodeName, update] of Object.entries(chunk)) {
+        nodeSequence.push(nodeName);
+        Object.assign(state, update);
+      }
+    }
+
+    const finalState = state as unknown as AgentState;
+
+    return {
+      response: buildRunResponse(finalState),
+      nodeSequence,
+      toolOutputs: finalState.toolOutputs,
+      extraction: finalState.extraction,
+    };
   }
 
   async stream(params: { body: unknown; correlationId: string; res: Response }): Promise<void> {

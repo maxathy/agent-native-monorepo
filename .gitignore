@@ -36,6 +36,7 @@ Thumbs.db
 coverage/
 test-results/
 playwright-report/
+eval-results/
 
 # Docker
 docker-compose.override.yml
