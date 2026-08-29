@@ -1,0 +1,57 @@
+{
+  "id": "tool-use-001",
+  "description": "A question the agent cannot answer from memory, with one tool available",
+  "retrievalPath": "vector",
+  "notes": "The task the first one does not cover: whether the agent reaches for the tool it has. `act` asks the model to pick a tool or return null, and the run is graded on tool_trajectory_recall — the reference names web-search and the trial has to make that call and have it succeed. Nothing is rigged: the tool is registered, the question is one no seeded fact answers, and the prompt says a tool may be selected. Retrieval is still the vector path, for the same reason memory-recall-001 is: the seed writes no :Fact, so expandFromSeeds has nothing to return.",
+  "input": {
+    "sessionId": "550e8400-e29b-41d4-a716-4466554400b0",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Search for what changed in the most recent LangGraph release and summarize it."
+      }
+    ],
+    "config": {
+      "maxSteps": 3,
+      "hopDepth": 2,
+      "topK": 10
+    }
+  },
+  "expectedSeeds": {
+    "neo4j": [
+      {
+        "id": "concept-tooling",
+        "label": "Concept Tooling",
+        "description": "A generic test concept for the tool-use task."
+      }
+    ],
+    "pgvector": [
+      {
+        "contentHash": "sha256-eval-fact-002",
+        "text": "An agent may call a tool when the answer is not already in memory.",
+        "episodeId": "550e8400-e29b-41d4-a716-4466554400b1",
+        "sessionId": "550e8400-e29b-41d4-a716-4466554400b0"
+      }
+    ],
+    "relationships": []
+  },
+  "expectedOutcome": "success",
+  "assertions": {
+    "retrievedContextMinLength": 1,
+    "outcomeMustBe": "success",
+    "tokenCountsPositive": true,
+    "episodicRowsMin": 1,
+    "mergedConceptsMin": 1
+  },
+  "expectedTrajectory": {
+    "nodes": ["ingress", "retrieve", "plan", "act", "distill", "reflect", "egress"],
+    "toolCalls": ["web-search"],
+    "thresholds": {
+      "trajectory_in_order_match": 1,
+      "trajectory_recall": 1,
+      "trajectory_precision": 0,
+      "tool_trajectory_recall": 1,
+      "tool_trajectory_precision": 0
+    }
+  }
+}

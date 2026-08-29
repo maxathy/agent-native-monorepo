@@ -13,10 +13,7 @@ describe('the shipped dataset', () => {
 
   it('loads memory-recall-001, migrated from run-fixture-001.json', () => {
     const suite = loadMemoryRecallSuite();
-    expect(suite.tasks).toHaveLength(1);
-
-    const task = suite.tasks[0]!;
-    expect(task.id).toBe('memory-recall-001');
+    const task = suite.tasks.find((t) => t.id === 'memory-recall-001')!;
     // expectedSeeds is retained exactly as the fixture carried it.
     expect(task.seeds.neo4j.map((c) => c.id)).toEqual(['concept-a', 'concept-b']);
     expect(task.seeds.pgvector).toHaveLength(1);
@@ -28,14 +25,17 @@ describe('the shipped dataset', () => {
   });
 
   it('turns the three dormant assertions into named graders', () => {
-    const names = loadMemoryRecallSuite().tasks[0]!.graders.map((g) => g.name);
+    const task = loadMemoryRecallSuite().tasks.find((t) => t.id === 'memory-recall-001')!;
+    const names = task.graders.map((g) => g.name);
     expect(names).toContain('retrieved_context_min_length');
     expect(names).toContain('outcome_must_be');
     expect(names).toContain('token_counts_positive');
   });
 
   it('grades persisted state, and says which axis that needs', () => {
-    const graders = loadMemoryRecallSuite().tasks[0]!.graders;
+    const graders = loadMemoryRecallSuite().tasks.find(
+      (t) => t.id === 'memory-recall-001',
+    )!.graders;
     const episodic = graders.find((g) => g.name === 'episodic_row_written');
     const entity = graders.find((g) => g.name === 'entity_merged');
 
@@ -43,12 +43,18 @@ describe('the shipped dataset', () => {
     expect(entity?.requires).toEqual({ memory: 'live' });
   });
 
-  it('declares itself a vector-path task and says why', () => {
-    // Not decoration. The seed script writes :Concept and RELATES_TO and no
-    // :Fact, and expandFromSeeds only returns facts — so a reader who assumed
-    // "graph seeds" meant "graph coverage" would be wrong.
-    const suite = loadSuite('memory-recall', join(EVAL_DATASETS_DIR, 'memory-recall'));
-    expect(suite.tasks[0]!.description).toBeTruthy();
+  it('gives every task a distinct session, so one reset cannot disturb another', () => {
+    const sessions = loadMemoryRecallSuite().tasks.map(
+      (task) => (task.input as { sessionId: string }).sessionId,
+    );
+    expect(new Set(sessions).size).toBe(sessions.length);
+  });
+
+  it('gates tool-use-001 on the agent actually calling the tool it has', () => {
+    // The task memory-recall-001 does not cover. Its threshold is 1, where
+    // memory-recall-001 reports the same metric without gating on it.
+    const task = loadMemoryRecallSuite().tasks.find((t) => t.id === 'tool-use-001')!;
+    expect(task.graders.map((g) => g.name)).toContain('tool_trajectory_recall');
   });
 
   it('builds no grader for an assertion the task does not declare', () => {
