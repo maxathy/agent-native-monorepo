@@ -72,10 +72,14 @@ The terminal SSE frame is a `StreamEvent` contract change and is named as one. A
 acceptance criteria that would move to P2-D are marked conditional, so a mid-flight split
 does not silently rewrite the contract.
 
-**Two implementation gates on P2-A, in order.** First: confirm with a live key that
-`gemini-embedding-001` accepts `outputDimensionality`. It is documentation-sourced, not
-observed, and it decides whether the column is `vector(768)` or `halfvec(3072)` — a
-migration is the most expensive thing in this PRD to get wrong. Second: the `:Fact`
+**The embedding gate on P2-A is cleared.** Measured 2026-08-29 against a live key:
+`gemini-embedding-001` accepts `outputDimensionality: 768` and returns 768 values, so the
+column is `vector(768)`, HNSW indexes it, and the `halfvec(3072)` fallback is not needed.
+The truncated vector comes back at L2 norm `0.583`, against exactly `1.0` for the native
+3072 output — so the normalization step is required rather than defensive. Both numbers are
+in P2-A's risks.
+
+**One gate remains.** The `:Fact`
 decision changes the knowledge-graph schema and invalidates ADR 0002's account of _why_
 fusion fails today — 0002 blames the fusion key, and the real cause is that the two readers
 return disjoint universes. That warrants **ADR 0004**, which records the one-candidate-

@@ -529,16 +529,31 @@ apps/agent-service/src/
   was cleared. The same shape applies with more surface: the first `docker compose --profile full up`
   that runs migrations, a checkpointer, and two live stores in one boot sequence will find
   things this document does not list.
-- **The embedding replacement is the one claim here not verified against a live service.**
+- **The embedding replacement is now verified against the live service.** Measured
+  2026-08-29 against `models/gemini-embedding-001:embedContent`:
+
+  | `outputDimensionality` | HTTP | returned length | L2 norm    |
+  | ---------------------- | ---- | --------------- | ---------- |
+  | `768`                  | 200  | 768             | `0.583182` |
+  | `3072` (native)        | 200  | 3072            | `1.000000` |
+
+  So `EMBEDDING_DIMENSIONS = 768`, the column is `vector(768)`, HNSW indexes it, and the
+  `halfvec(3072)` fallback is not needed. The measurement also settles a detail that was
+  inference: a Matryoshka-truncated vector comes back at norm 0.58, not 1.0, while the
+  native 3072 output is exactly unit-norm. **L2-normalizing after truncation is required,
+  not defensive.** `vector_cosine_ops` would tolerate the un-normalized vector, but the
+  stored representation should be canonical, and a later switch to inner-product ops
+  silently returns wrong distances if it is not.
+
+  The paragraph below is retained for the record of what was assumed before the check.
+
+- **What this claim looked like before it was measured.**
   `text-embedding-004` being retired is verified (P0-A observed the 500). That
   `gemini-embedding-001` accepts `outputDimensionality` and returns a truncatable
   Matryoshka embedding is from its documentation, not from a call — this repository has no
-  API key. If it is wrong, the `halfvec(3072)` fallback above applies and the HNSW criterion
-  still holds. **This is the first task of implementation, not a background assumption:**
-  one `curl` to `models/gemini-embedding-001:embedContent` with `outputDimensionality: 768`,
-  and record the observed vector length in this PRD before writing the migration. It is a
-  ten-minute check that decides a column type, and a migration is the most expensive thing
-  here to get wrong.
+  API key. If it were wrong, the `halfvec(3072)` fallback above would apply and the HNSW
+  criterion would still hold. The check was cheap and the migration it decides is not, which
+  is why it ran before implementation rather than during it.
 - **Splitting `distill` out of `reflect` is decided — and the draft undersold why.** It
   adds a node to public vocabulary — SSE `StreamEvent.node`, the `agent.node.*` span name,
   the console's colour map, the topology diagrams in `README.md` and
