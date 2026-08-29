@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { loadEnvFile } from './load-env.js';
 import { initTelemetry, createLogger } from '@repo/telemetry';
 import { RunRequestSchema } from '@repo/agent-contracts';
 import { AppModule } from './app.module.js';
@@ -8,6 +9,11 @@ import { ZodValidationPipe } from './common/pipes/zod-validation.pipe.js';
 const logger = createLogger('main');
 
 async function bootstrap(): Promise<void> {
+  // Before anything reads process.env. The README tells you to create a `.env`
+  // and, until now, nothing on the Node path read it — `yarn dev` is bare
+  // `tsx src/main.ts`, and every variable came from the ambient shell.
+  loadEnvFile();
+
   initTelemetry('agent-service');
 
   // Nest aborts the process (SIGABRT, exit 134, a core dump and no message)
