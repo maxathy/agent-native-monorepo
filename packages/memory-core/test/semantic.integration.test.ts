@@ -5,6 +5,7 @@ import { CypherNeo4jWriter } from '../src/semantic/neo4j/neo4j.writer.js';
 import { PgPgvectorWriter } from '../src/semantic/pgvector/pgvector.writer.js';
 import { EMBEDDING_DIMENSIONS } from '../src/semantic/embedding.js';
 import { runMigrations } from '../src/migrate.js';
+import { ensureSemanticConstraints } from '../src/semantic/neo4j/neo4j.constraints.js';
 import { skipUnlessIntegrationEnv } from './integration-env.js';
 
 const DATABASE_URL = process.env['DATABASE_URL'];
@@ -35,6 +36,8 @@ describe.skipIf(SKIP)('Semantic Memory (integration)', () => {
     }
     await pgPool.query('DELETE FROM semantic_facts');
 
+    await ensureSemanticConstraints(neo4jDriver);
+
     neo4jWriter = new CypherNeo4jWriter(neo4jDriver);
     pgWriter = new PgPgvectorWriter(pgPool);
   });
@@ -42,6 +45,36 @@ describe.skipIf(SKIP)('Semantic Memory (integration)', () => {
   afterAll(async () => {
     await neo4jDriver.close();
     await pgPool.end();
+  });
+
+  describe('ensureSemanticConstraints', () => {
+    it('declares uniqueness on :Concept(id) and :Fact(contentHash)', async () => {
+      // MERGE without these is not safe under concurrency: two transactions
+      // can each fail to find the node and each create it, which is the
+      // duplicate the writer's idempotency is supposed to rule out.
+      const session = neo4jDriver.session();
+      try {
+        const result = await session.run('SHOW CONSTRAINTS');
+        const declared = result.records.map((r) => ({
+          labels: r.get('labelsOrTypes') as string[],
+          properties: r.get('properties') as string[],
+          type: r.get('type') as string,
+        }));
+
+        expect(declared).toContainEqual(
+          expect.objectContaining({ labels: ['Concept'], properties: ['id'] }),
+        );
+        expect(declared).toContainEqual(
+          expect.objectContaining({ labels: ['Fact'], properties: ['contentHash'] }),
+        );
+      } finally {
+        await session.close();
+      }
+    });
+
+    it('is idempotent across boots', async () => {
+      await expect(ensureSemanticConstraints(neo4jDriver)).resolves.toBeUndefined();
+    });
   });
 
   describe('Neo4jWriter idempotency', () => {
