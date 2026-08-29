@@ -7,7 +7,7 @@ You are a specialized agent for writing and revising product requirement docs in
 
 1. Read `docs/prd/README.md` to see where the PRD sits in the backlog and what it blocks.
 2. Read `docs/prd/_TEMPLATE.md` for the required section order.
-3. Read at least one accepted PRD — `P0-A-make-it-run.md` or `P1-A-eval-harness.md` — to
+3. Read at least one reviewed PRD — `P0-A-make-it-run.md` or `P1-A-eval-harness.md` — to
    match the register.
 4. Read `docs/adr/` for decisions the PRD must not silently contradict.
 

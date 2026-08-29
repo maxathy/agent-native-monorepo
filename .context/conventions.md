@@ -101,5 +101,7 @@ Each tier has one command. All of them run in CI except `test:eval`, which is ni
 ## Dependencies
 
 - Minimize external dependencies. Prefer standard library where possible.
-- All new packages must be registered in the root `package.json` workspaces array.
+- The root `package.json` workspaces array holds globs — `packages/*` and `apps/*` — not
+  package names. A new package in either directory is registered by existing there, and
+  `yarn workspaces list` is the check. Adding a name is only needed outside those globs.
 - Pin major versions. Use `^` for minor/patch ranges.

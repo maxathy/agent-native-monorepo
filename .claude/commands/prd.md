@@ -29,7 +29,7 @@ Work on PRD `$ARGUMENTS`.
 Write the PRD. Do not implement it.
 
 1. Read `docs/prd/_TEMPLATE.md` for section order, `.agents/prd-author.md` for the rules,
-   and one accepted PRD — `P0-A-make-it-run.md` or `P1-A-eval-harness.md` — for register.
+   and one reviewed PRD — `P0-A-make-it-run.md` or `P1-A-eval-harness.md` — for register.
 2. Read `docs/adr/` so the design does not silently contradict a decision.
 3. Verify every claim you make about this repo against the source before writing it. A PRD
    whose Problem section is wrong is worse than no PRD, because it will be trusted.

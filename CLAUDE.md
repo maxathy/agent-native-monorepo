@@ -10,7 +10,9 @@ before making any changes.
 - The reflect node is the ONLY place that promotes data to Episodic or Semantic memory.
 - All graph nodes must have a corresponding OTel span. Use the span helpers in
   packages/telemetry.
-- All new packages must be added to the Yarn 4 workspaces array in the root package.json.
+- The root `workspaces` array is two globs, `packages/*` and `apps/*`, so a new package in
+  either directory needs no entry. Confirm it resolved with `yarn workspaces list`. Only a
+  package outside those two directories has to be added by hand.
 - Run `yarn turbo typecheck`, `yarn turbo lint`, `yarn lint:docs`, and `yarn format:check`
   before declaring any task complete. All four gate CI.
 - See .context/workflows.md for how to add a new graph node, package, or memory adapter.
