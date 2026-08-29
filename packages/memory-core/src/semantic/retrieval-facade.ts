@@ -9,8 +9,18 @@ export const RetrievalQuerySchema = z.object({
   topK: z.number().int().positive().default(10),
   hopDepth: z.number().int().min(1).max(3).default(2),
   sessionId: z.string().uuid().optional(),
+  /**
+   * Opts out of session isolation. Retrieval is session-scoped by default;
+   * this is for the case where long-term recall across sessions is the point.
+   */
+  crossSession: z.boolean().default(false),
 });
 export type RetrievalQuery = z.infer<typeof RetrievalQuerySchema>;
+/**
+ * What a caller passes. `topK`, `hopDepth` and `crossSession` carry defaults,
+ * so they are required on the parsed value and optional on the way in.
+ */
+export type RetrievalQueryInput = z.input<typeof RetrievalQuerySchema>;
 
 export const RetrievalCandidateSchema = z.object({
   source: z.enum(['neo4j', 'pgvector']),
@@ -24,7 +34,7 @@ export const RetrievalCandidateSchema = z.object({
 export type RetrievalCandidate = z.infer<typeof RetrievalCandidateSchema>;
 
 export interface RetrievalFacade {
-  retrieve(query: RetrievalQuery): Promise<RetrievalCandidate[]>;
+  retrieve(query: RetrievalQueryInput): Promise<RetrievalCandidate[]>;
 }
 
 /**
@@ -84,12 +94,15 @@ export class HybridRetrievalFacade implements RetrievalFacade {
     private readonly neo4jReader: Neo4jReader,
   ) {}
 
-  async retrieve(query: RetrievalQuery): Promise<RetrievalCandidate[]> {
+  async retrieve(query: RetrievalQueryInput): Promise<RetrievalCandidate[]> {
     const validated = RetrievalQuerySchema.parse(query);
 
     // Run both retrievals in parallel
     const [pgvectorResults, neo4jResults] = await Promise.all([
-      this.pgvectorReader.searchByCosine(validated.queryEmbedding, validated.topK * 2),
+      this.pgvectorReader.searchByCosine(validated.queryEmbedding, validated.topK * 2, {
+        sessionId: validated.sessionId,
+        crossSession: validated.crossSession,
+      }),
       this.neo4jReader.expandFromSeeds(validated.seedEntityIds, validated.hopDepth),
     ]);
 

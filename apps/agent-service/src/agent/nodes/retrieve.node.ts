@@ -44,8 +44,8 @@ export async function retrieveNode(
       const candidates = await deps.retrievalFacade.retrieve({
         queryEmbedding,
         seedEntityIds,
-        topK: 10,
-        hopDepth: 2,
+        topK: state.topK,
+        hopDepth: state.hopDepth,
         sessionId: state.sessionId,
       });
 

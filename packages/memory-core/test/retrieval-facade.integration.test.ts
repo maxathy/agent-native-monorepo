@@ -95,6 +95,15 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
       sessionId: '550e8400-e29b-41d4-a716-446655440001',
     });
 
+    // A fact belonging to a different session, to prove retrieval is scoped.
+    await pgWriter.upsertFact({
+      contentHash: 'sha256-facade-other-session',
+      text: 'A fact written while working in another session entirely.',
+      embedding: makeEmbedding(1),
+      episodeId: '550e8400-e29b-41d4-a716-446655440000',
+      sessionId: '550e8400-e29b-41d4-a716-4466554400bb',
+    });
+
     // Seed the same facts into Neo4j, keyed on the hashes pgvector used. This
     // is what gives the two retrievers one candidate universe: the graph
     // traversal reaches a :Fact, not a :Concept, so a fact both paths find is
@@ -169,6 +178,34 @@ describe.skipIf(SKIP)('HybridRetrievalFacade (integration)', () => {
     const matches = results.filter((r) => r.contentHash === fused);
     expect(matches).toHaveLength(1);
     expect(matches[0]!.score).toBeCloseTo(1 / (60 + pgRank + 1) + 1 / (60 + neoRank + 1), 12);
+  });
+
+  describe('session scoping', () => {
+    const sessionA = '550e8400-e29b-41d4-a716-446655440001';
+    const queryEmbedding = new Array(EMBEDDING_DIMENSIONS)
+      .fill(0)
+      .map((_, i) => Math.sin((i + 1) * 0.01));
+
+    it('does not return a fact written in another session', async () => {
+      const results = await facade.retrieve({
+        queryEmbedding,
+        seedEntityIds: ['langgraph'],
+        sessionId: sessionA,
+      });
+
+      expect(results.map((r) => r.contentHash)).not.toContain('sha256-facade-other-session');
+    });
+
+    it('returns it when crossSession is set', async () => {
+      const results = await facade.retrieve({
+        queryEmbedding,
+        seedEntityIds: ['langgraph'],
+        sessionId: sessionA,
+        crossSession: true,
+      });
+
+      expect(results.map((r) => r.contentHash)).toContain('sha256-facade-other-session');
+    });
   });
 
   it('returns RRF scores in monotonically decreasing order', async () => {

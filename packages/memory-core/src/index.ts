@@ -43,7 +43,11 @@ export {
   type PgvectorWriter,
   PgPgvectorWriter,
 } from './semantic/pgvector/pgvector.writer.js';
-export { type PgvectorReader, PgPgvectorReader } from './semantic/pgvector/pgvector.reader.js';
+export {
+  type PgvectorReader,
+  type PgvectorSearchScope,
+  PgPgvectorReader,
+} from './semantic/pgvector/pgvector.reader.js';
 export { createPgvectorPool } from './semantic/pgvector/pgvector.client.js';
 
 // Retrieval Facade — hybrid Neo4j + pgvector with RRF merge
@@ -51,6 +55,7 @@ export {
   RetrievalQuerySchema,
   RetrievalCandidateSchema,
   type RetrievalQuery,
+  type RetrievalQueryInput,
   type RetrievalCandidate,
   type RetrievalFacade,
   HybridRetrievalFacade,

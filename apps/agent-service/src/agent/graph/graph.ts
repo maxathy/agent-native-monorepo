@@ -27,6 +27,8 @@ const AgentStateAnnotation = Annotation.Root({
   outcome: Annotation<AgentState['outcome']>,
   stepCount: Annotation<number>,
   maxSteps: Annotation<number>,
+  topK: Annotation<number>,
+  hopDepth: Annotation<number>,
   shouldContinue: Annotation<boolean>,
 });
 

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { getTracer } from '@repo/telemetry';
-import { RunRequestSchema } from '@repo/agent-contracts';
+import { RunRequestSchema, RunRequestConfigSchema } from '@repo/agent-contracts';
 import { seedWorkingMemory } from '@repo/memory-core';
 import type { AgentState } from '../graph/state.js';
 
@@ -26,9 +26,15 @@ export async function ingressNode(
         messages: request.messages,
       });
 
+      // Parsed rather than defaulted inline, so the defaults stay in the
+      // contract instead of being re-spelled here.
+      const config = RunRequestConfigSchema.parse(request.config ?? {});
+
       return {
         ...workingMemory,
-        maxSteps: request.config?.maxSteps ?? 10,
+        maxSteps: config.maxSteps,
+        topK: config.topK,
+        hopDepth: config.hopDepth,
         stepCount: 0,
         shouldContinue: true,
         toolOutputs: [],

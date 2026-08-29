@@ -13,6 +13,8 @@ function makeState(overrides: Partial<AgentState> = {}): AgentState {
     tokenCounts: { prompt: 0, completion: 0 },
     stepCount: 0,
     maxSteps: 10,
+    topK: 10,
+    hopDepth: 2,
     shouldContinue: true,
     ...overrides,
   };
