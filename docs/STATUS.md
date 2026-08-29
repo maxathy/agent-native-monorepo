@@ -52,10 +52,16 @@ emits a span, and the compose stack comes up on five healthy containers. Both qu
 curls in `README.md` work against a fresh clone with no `.env` — verified through the
 gateway against `docker compose --profile full` on 2026-08-28.
 
-The memory system is a set of well-tested adapters that the service does not yet
-construct. Rows 1, 2, 3, 4, 6, 13, 15 and 16 are one piece of work — wiring
-`packages/memory-core` into `apps/agent-service` — and that work is P2-A in
-[the backlog](prd/README.md).
+The memory system is constructed and exercised. Rows 1, 2, 3, 4, 6, 13, 15 and 16 were one
+piece of work — wiring `packages/memory-core` into `apps/agent-service` — and P2-A did it.
+A run against configured stores writes episodes, concepts and facts under the `runId` its
+own response returns.
+
+What no row here can tell you is whether the agent is any good. Every row is a capability
+claim about the chassis, and each is checkable by reading a file. Whether the graph reaches
+sensible answers, and keeps reaching them, is the one question that needs a measurement
+rather than a citation, and there is no measurement in this repository yet. P1-A in
+[the backlog](prd/README.md) is the PRD that builds one.
 
 Rows 5, 11 and 14 have no owner. They are small, they are honestly labelled, and inventing
 a PRD id for each would put three rows in the backlog that nobody has agreed to.
