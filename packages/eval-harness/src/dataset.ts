@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
-import { TaskSeedsSchema, type Grader, type Suite, type Task } from './types.js';
+import { OutcomeSchema, TaskSeedsSchema, type Grader, type Suite, type Task } from './types.js';
 import type { MemoryOutcome } from './outcome.js';
 import {
   outcomeMustBe,
@@ -43,10 +43,10 @@ export const TaskSpecSchema = z.object({
     config: z.record(z.unknown()).optional(),
   }),
   expectedSeeds: TaskSeedsSchema.default({ neo4j: [], relationships: [], pgvector: [] }),
-  expectedOutcome: z.enum(['success', 'partial', 'failure']),
+  expectedOutcome: OutcomeSchema,
   assertions: z.object({
     retrievedContextMinLength: z.number().int().nonnegative().optional(),
-    outcomeMustBe: z.enum(['success', 'partial', 'failure']).optional(),
+    outcomeMustBe: OutcomeSchema.optional(),
     tokenCountsPositive: z.boolean().optional(),
     /** `reflect` wrote at least this many `episodes` rows under the run's id. */
     episodicRowsMin: z.number().int().nonnegative().optional(),

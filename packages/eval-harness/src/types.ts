@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { OutcomeSchema, type Message } from '@repo/shared-types';
 
 /**
  * The vocabulary. These names follow published agent-evaluation practice so the
@@ -41,11 +42,15 @@ export interface AxisRequirements {
 
 // --- Transcript ------------------------------------------------------------
 
-export const MessageSchema = z.object({
-  role: z.enum(['user', 'assistant', 'tool']),
-  content: z.string(),
-});
-export type Message = z.infer<typeof MessageSchema>;
+export { MessageSchema, OutcomeSchema } from '@repo/shared-types';
+export type { Message };
+
+/**
+ * What the agent said about its own run — `egress` reports `partial` when any
+ * tool call carried an error. Re-exported from the contract rather than
+ * restated: a second spelling of this union is a second thing to keep true.
+ */
+export type AgentReportedOutcome = z.infer<typeof OutcomeSchema>;
 
 /**
  * One tool invocation as the graph recorded it.
@@ -77,7 +82,7 @@ export interface Transcript {
   readonly retrievedContext: readonly { source: string; content: string; score: number }[];
   readonly tokenCounts: { readonly prompt: number; readonly completion: number };
   /** What the agent reported about itself — not what the environment shows. */
-  readonly outcome: 'success' | 'partial' | 'failure';
+  readonly outcome: AgentReportedOutcome;
   readonly latencyMs: number;
   /**
    * Not populated by the adapter in `apps/agent-service`. The field is here
