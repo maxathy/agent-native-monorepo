@@ -2,8 +2,8 @@
 id: P1-B
 title: packages/agent-cassette — decision-level record and replay
 tier: 1
-status: draft
-size: M
+status: accepted
+size: L
 depends_on: [P1-A]
 blocks: [P1-C]
 issue: null

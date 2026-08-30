@@ -161,7 +161,7 @@ above did not say.** The spine has always drawn `P1-A ──▶ P1-B ──▶ P
 the one the eval README already records: the pull-request tier P1-C wants is either a live
 tier nobody leaves switched on or a stub tier that measures nothing. P1-B is the third axis
 value — record the model's decisions once, replay them for free, and make every report say
-which of the three produced its number. It is a draft awaiting review, not accepted work.
+which of the three produced its number. It is accepted, and it is the PRD in progress. Its size moved from M to L on the way in: the draft's own scope list is a new package, an axis change in `eval-harness`, a hook in the service, two `ORDER BY` fixes, a recorded set and an ADR, and the author flagged M as the top of the band rather than the middle. P0-A is the reason to believe them.
 
 **Drafting it turned up two defects by running rather than reading, and both are in its
 scope.** `turbo.json`'s `eval` task does not declare `EVAL_TRIALS` or `EVAL_OUTPUT_DIR`, and
@@ -234,14 +234,14 @@ that `.github/workflows/agent-eval.yml` runs `yarn turbo test:eval`, which resol
 single integration suite in `packages/memory-core` that never invokes the agent — P1-C owns
 replacing it.
 
-| ID                             | Title                                                         | Size | Status  |
-| ------------------------------ | ------------------------------------------------------------- | ---- | ------- |
-| [P1-A](P1-A-eval-harness.md)   | `packages/eval-harness` — evaluation as a first-class package | L    | shipped |
-| [P1-B](P1-B-agent-cassette.md) | `packages/agent-cassette` — decision-level record and replay  | M    | draft   |
-| P1-C                           | Tiered evaluation pipeline replacing the nightly stub         | M    | draft   |
-| P1-D                           | Statistical regression gate with paired bootstrap             | M    | draft   |
-| P1-E                           | Model-drift canary against pinned and floating model ids      | S    | draft   |
-| P1-F                           | Cost, latency, and step budgets as CI assertions              | S    | draft   |
+| ID                             | Title                                                         | Size | Status   |
+| ------------------------------ | ------------------------------------------------------------- | ---- | -------- |
+| [P1-A](P1-A-eval-harness.md)   | `packages/eval-harness` — evaluation as a first-class package | L    | shipped  |
+| [P1-B](P1-B-agent-cassette.md) | `packages/agent-cassette` — decision-level record and replay  | L    | accepted |
+| P1-C                           | Tiered evaluation pipeline replacing the nightly stub         | M    | draft    |
+| P1-D                           | Statistical regression gate with paired bootstrap             | M    | draft    |
+| P1-E                           | Model-drift canary against pinned and floating model ids      | S    | draft    |
+| P1-F                           | Cost, latency, and step budgets as CI assertions              | S    | draft    |
 
 ## Tier 2 — Make the architecture real
 
