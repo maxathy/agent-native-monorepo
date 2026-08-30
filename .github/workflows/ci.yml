@@ -28,3 +28,42 @@ jobs:
       - run: yarn turbo test:unit
       - run: yarn turbo test:service
       - run: yarn turbo build
+
+  # The four gates above never build a container, so an image that cannot install
+  # its own workspaces passes CI and fails in Release, on the deploy path, after
+  # main is already green. That is how @repo/eval-harness shipped broken. Building
+  # here without pushing moves the failure back to the gate.
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [agent-service, gateway]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: false
+          load: true
+          tags: ${{ matrix.app }}:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: The image starts and resolves its workspace imports
+        run: |
+          docker run -d --name probe ${{ matrix.app }}:ci
+          sleep 8
+          docker logs probe
+          if [ "$(docker inspect -f '{{.State.Running}}' probe)" != "true" ]; then
+            echo "::error::${{ matrix.app }} image exited instead of staying up"
+            exit 1
+          fi
+          if docker logs probe 2>&1 | grep -qi 'cannot find package'; then
+            echo "::error::a workspace import resolved to nothing in the built image"
+            exit 1
+          fi
