@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [agent-service, gateway]
+        app: [agent-service, gateway, console]
     steps:
       - uses: actions/checkout@v7
 
@@ -54,7 +54,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # console is not probed standalone: its nginx.conf proxies to the `gateway`
+      # upstream, which only resolves on the compose network, so a bare `docker run`
+      # exits on purpose. e2e.yml is what exercises it running.
       - name: The image starts and resolves its workspace imports
+        if: matrix.app != 'console'
         run: |
           docker run -d --name probe ${{ matrix.app }}:ci
           sleep 8
