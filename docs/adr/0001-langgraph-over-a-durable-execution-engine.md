@@ -45,6 +45,24 @@ Two obligations follow, and both are tracked:
    approval gate rather than a retry. P4-C introduces the reversibility-tiered tool
    registry that enforces this.
 
-**Revisit if** runs start spanning minutes with external callbacks, or the system grows
-fan-out across multiple agents with independent failure domains. At that point the
-workflow engine earns its operational cost.
+**What this decision is not about, and the two clocks it conflates.** The argument above
+measures one clock: how long an agent _run_ takes, which is seconds. A payer workflow runs
+on a second clock entirely. A prior authorization is submitted, pends for records, waits on
+a clinician, and may be appealed — days to weeks, mostly spent idle, with external
+callbacks and durable timers. That is the shape a workflow engine exists for, and nothing
+here argues against it.
+
+These are different layers, and the checkpointer is the seam between them. LangGraph owns
+reasoning _within_ a turn: retrieve, plan, act, distill, reflect, resumable on its
+`thread_id`. A durable execution engine would own the _case_ that spans turns — the timers,
+the human waits, the compensation when a step is retracted weeks later. A case orchestrator
+invoking this graph as one durable step is a coherent architecture, and choosing LangGraph
+here does not foreclose it.
+
+What would be incoherent is running both at the same layer: a workflow engine driving
+node-by-node execution while LangGraph also owns the graph. That is the conflict the DBOS
+note above is really describing.
+
+**Revisit if** a single run starts spanning minutes with external callbacks, or the system
+grows fan-out across agents with independent failure domains. Adding a case layer above the
+graph is not a revisit of this decision — it is a new one, and it belongs in its own record.
