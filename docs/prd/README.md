@@ -156,6 +156,26 @@ ablation measures whether hybrid beats either store alone, and that measurement 
 meaningful now that fusion fuses. Both are unblocked — P1-A shipped the `Grader` interface
 they build on.
 
+**[P1-B](P1-B-agent-cassette.md) is drafted and sits in front of P1-C, which the paragraph
+above did not say.** The spine has always drawn `P1-A ──▶ P1-B ──▶ P1-C`, and the reason is
+the one the eval README already records: the pull-request tier P1-C wants is either a live
+tier nobody leaves switched on or a stub tier that measures nothing. P1-B is the third axis
+value — record the model's decisions once, replay them for free, and make every report say
+which of the three produced its number. It is a draft awaiting review, not accepted work.
+
+**Drafting it turned up two defects by running rather than reading, and both are in its
+scope.** `turbo.json`'s `eval` task does not declare `EVAL_TRIALS` or `EVAL_OUTPUT_DIR`, and
+Turbo's strict env mode therefore strips both — verified with a probe script in place of the
+`eval` command, which received `DATABASE_URL` and `undefined` for the other two. So the two
+knobs `packages/eval-harness/README.md` documents do not work, which is the false-capability
+class `.context/conventions.md` exists to catch and nothing lints. And the graph retriever's
+tied-score ordering is unstable across a trial reset: twelve facts at equal hop distance
+returned three different orders over three delete-and-reseed cycles, because neither
+`expandFromSeeds` nor `searchByCosine` declares a secondary sort key. That order reaches
+`plan`'s prompt through `rrfMerge`, so any cassette keyed on prompt text needs the
+tiebreaker first. Today's two tasks each seed one fact and cannot produce a tie, which is
+why nothing has failed yet.
+
 **Three documents outlived P2-A and have been corrected.** `README.md` still told a reader
 the memory adapters were not wired and pointed at P2-A as outstanding; `.env.example` still
 warned that setting `GOOGLE_API_KEY` breaks `POST /runs` via a retired embedding model; and
@@ -214,14 +234,14 @@ that `.github/workflows/agent-eval.yml` runs `yarn turbo test:eval`, which resol
 single integration suite in `packages/memory-core` that never invokes the agent — P1-C owns
 replacing it.
 
-| ID                           | Title                                                         | Size | Status  |
-| ---------------------------- | ------------------------------------------------------------- | ---- | ------- |
-| [P1-A](P1-A-eval-harness.md) | `packages/eval-harness` — evaluation as a first-class package | L    | shipped |
-| P1-B                         | `packages/agent-cassette` — decision-level record and replay  | M    | draft   |
-| P1-C                         | Tiered evaluation pipeline replacing the nightly stub         | M    | draft   |
-| P1-D                         | Statistical regression gate with paired bootstrap             | M    | draft   |
-| P1-E                         | Model-drift canary against pinned and floating model ids      | S    | draft   |
-| P1-F                         | Cost, latency, and step budgets as CI assertions              | S    | draft   |
+| ID                             | Title                                                         | Size | Status  |
+| ------------------------------ | ------------------------------------------------------------- | ---- | ------- |
+| [P1-A](P1-A-eval-harness.md)   | `packages/eval-harness` — evaluation as a first-class package | L    | shipped |
+| [P1-B](P1-B-agent-cassette.md) | `packages/agent-cassette` — decision-level record and replay  | M    | draft   |
+| P1-C                           | Tiered evaluation pipeline replacing the nightly stub         | M    | draft   |
+| P1-D                           | Statistical regression gate with paired bootstrap             | M    | draft   |
+| P1-E                           | Model-drift canary against pinned and floating model ids      | S    | draft   |
+| P1-F                           | Cost, latency, and step budgets as CI assertions              | S    | draft   |
 
 ## Tier 2 — Make the architecture real
 
