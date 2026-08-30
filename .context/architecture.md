@@ -11,10 +11,11 @@ template. It exists to demonstrate architectural thinking in two scarce domains 
 2. **Production agentic systems** — LangGraph state machines with non-trivial memory
    architecture and OpenTelemetry instrumentation.
 
-> **This document describes the design. `docs/STATUS.md` records what is wired.** The two
-> diverge today, most of all in the memory tiers: the adapters below exist and are tested,
-> and `apps/agent-service` does not construct them. Read the matrix before you rely on a
-> sentence here.
+> **This document describes the design. `docs/STATUS.md` records what is wired.** They
+> agree on the memory tiers since P2-A: `MemoryModule` constructs the pool, the driver, the
+> four adapters, the facade and the checkpointer, and `RunsService` injects them. Read the
+> matrix before you rely on a sentence here anyway — it carries the per-capability status
+> and this document does not.
 
 ## System Overview
 
@@ -42,8 +43,10 @@ template. It exists to demonstrate architectural thinking in two scarce domains 
 ## The Three-Brain Memory Model
 
 The memory system is divided into three tiers with distinct scopes, persistence strategies,
-and access patterns. All three tiers are exposed through `packages/memory-core`. Only
-Working Memory is reached by a live request today; see `docs/STATUS.md` rows 1-4.
+and access patterns. All three tiers are exposed through `packages/memory-core`, and all
+three are reached by a live request: one `POST /runs` leaves rows in `episodes` and
+`semantic_facts` and `:Concept` and `:Fact` nodes in the graph. See `docs/STATUS.md`
+rows 1-4.
 
 ### Working Memory (Per-Run)
 
@@ -125,9 +128,10 @@ START → ingress → retrieve → plan → act ⟲ (loop) → distill → refle
 - A state machine (not a chain) was chosen for fault tolerance: nodes are the unit a
   checkpointer can resume from, and the write adapters are idempotent (Cypher MERGE,
   pgvector upsert on content hash) so that a resumed node is safe to re-run.
-- **Neither half of that is switched on yet.** The graph compiles with no checkpointer and
-  no `retryPolicy`, so a node failure fails the run. ADR 0001 records the choice of
-  checkpointer and why it is not the same thing as durable execution; P2-A adds it.
+- **Both halves are switched on.** `buildAgentGraph` compiles with the `PostgresSaver` when
+  one is configured (`graph/graph.ts:107`) and `IO_RETRY` is attached to the five I/O nodes.
+  ADR 0001 records the choice of checkpointer and why it is not the same thing as durable
+  execution: resume, not exactly-once.
 
 ## NestJS 11 Microservice
 
@@ -137,6 +141,7 @@ The LangGraph graph is hosted inside a NestJS 11 microservice (`apps/agent-servi
 - **POST /runs/stream** — Streaming mode. Emits SSE events per node completion.
 - **Global concerns:** ZodValidationPipe, AuditInterceptor (structured logging),
   LoggingInterceptor (correlation ID via AsyncLocalStorage), HttpExceptionFilter.
-- **Observability:** One OTel span per graph node, OTLP HTTP export. The child spans for
-  pgvector search and Neo4j expansion are implemented in the reader classes, which the
-  service does not construct — a live trace shows six node spans and no children.
+- **Observability:** One OTel span per graph node, OTLP HTTP export. The reader classes
+  carry child spans for pgvector search and Neo4j expansion, and `MemoryModule` constructs
+  them (`memory/memory.module.ts:106`), so a live trace on the configured memory axis shows
+  those children under `agent.node.retrieve`.
