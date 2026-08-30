@@ -2,201 +2,48 @@
 
 ## Where things stand
 
-_Last updated 2026-08-29. If this section is more than a few weeks stale, trust the code
+_Last updated 2026-08-30. If this section is more than a few weeks stale, trust the code
 over it and update it._
 
-**The service runs now.** [P0-A](P0-A-make-it-run.md) is shipped. `POST /runs` returns a
-`RunResponse` and `POST /runs/stream` emits a frame per node, both directly and through the
-gateway, and both README quickstart curls succeed against a clone with no `.env`.
-`docker compose --profile full up` reaches five healthy containers — six when P0-A shipped,
-before P0-B removed the Redis nothing connected to.
+**Four PRDs are shipped and the system they describe is running.** The service answers
+`POST /runs` and `POST /runs/stream`; `memory-core` is constructed by the app rather than
+sitting beside it; the graph compiles with a checkpointer and a retry policy on every node
+that performs I/O; and `packages/eval-harness` measures the result. Verified against live
+stores from an empty database: one run leaves episodic rows, `:Concept` and `:Fact` nodes,
+`semantic_facts` rows and checkpoints under the runId its own response returned.
 
-**P0-A was not the two one-line fixes it was scoped as.** The channel/node collision and
-the missing `fixRequestBody` were both real, and behind them were six more defects, each
-visible only once the one in front of it was cleared: a no-op `pathRewrite` that sent
-`/runs` upstream as `/`, a Jest config that required an uninstalled `ts-node`, an exception
-filter that discarded the validation payload the pipe attached, Docker images missing the
-`packages/` tree their symlinks point into, an empty `OTEL_EXPORTER_OTLP_ENDPOINT` that
-built an invalid exporter URL and killed bootstrap, and `yarn dev` injecting `undefined`
-into the one Nest constructor because esbuild does not emit decorator metadata. The lesson
-for the remaining PRDs: a defect found by reading is one defect, and the count is only
-known after the thing runs.
+**`docs/STATUS.md` is the authority on any capability sentence, including the ones above.**
+Seventeen rows, each with a status, a file and a line — fourteen `implemented`, one
+`planned`, one `stubbed`, one `removed`, none `broken`. The rule that keeps it true is in
+`.context/conventions.md`: a change that moves a row moves it there in the same pull
+request. `yarn lint:docs` fails CI when a PRD's status disagrees with its row below.
 
-**CI can no longer hide a broken service.** `ci.yml` runs `turbo test:service`, which boots
-a Nest app and asserts the response against `RunResponseSchema`. A second job in `e2e.yml`
-runs Playwright against the console container from `docker compose --profile full`, rather
-than the Vite dev server with nothing behind it. A unit test calls `buildAgentGraph` and
-fails if the channel collision returns.
+**The agent is measured, but not yet gated.** `yarn eval` runs n trials per task and reports
+`pass@k` and `pass^k`, and every number names the axes that produced it. Measured
+2026-08-29 — model `stub` / memory `live`, 5 trials x 2 tasks: 50%, with `memory-recall-001`
+at 5/5 and `tool-use-001` at 0/5 because the agent never reaches for the one tool it has. On
+model `live` / memory `live`, one trial of `memory-recall-001` passed all eleven graders.
+`tool-use-001` has never run on the live model axis: the free-tier quota is 20 requests and a
+5x2 suite needs about forty. What none of this is yet is a merge gate — P1-C wires evaluation
+into a pipeline, P1-D decides which failures should block.
 
-**The documentation now says what the code does, and `docs/STATUS.md` is where it says
-it.** [P0-B](P0-B-reconcile-claims.md) is shipped. The matrix carries sixteen rows — the
-fifteen from its inventory plus the retired embedding model — each with a status, a file
-and a line, and the PRD that owns the rest. Eight of those rows are the same piece of work:
-`packages/memory-core` is a set of tested adapters that `apps/agent-service` never
-constructs, and P2-A is what constructs them. Redis is gone from compose, CI and
-`.env.example`; Node is pinned to 24 in the README, all five workflows and all three
-images; and the testcontainers convention the repository never followed is out of
-`.context/` and `.agents/`.
+**Memory and model are independent axes, and neither falls back.** `GOOGLE_API_KEY` selects
+the model half; `DATABASE_URL` and `NEO4J_URI` select the memory half. Configured but
+unreachable exits 1 in about a second naming the cause. Selecting no-op writers because a
+configured database is missing was the defect P2-A existed to remove, and it is not a
+reachable runtime path. A clone with no `.env` still serves both quickstart curls.
 
-**Read `docs/STATUS.md` before trusting a capability sentence anywhere else.** It is the
-file this tier exists to produce, and the rule that keeps it current is in
-`.context/conventions.md` and `.agents/reviewer.md`: a change that moves a row moves it
-there in the same pull request.
+**[P1-B](P1-B-agent-cassette.md) is accepted and is the work in progress.** It records the
+model's decisions at the `ModelDeps` seam and replays them, which is what makes a
+pull-request evaluation tier affordable — without it P1-C has a live tier nobody leaves
+switched on, or a stub tier that measures nothing. Accepting it endorsed four judgement calls
+recorded in the PRD; reversing one is an edit to a criterion, not a reopen.
 
-**[P2-A](P2-A-wire-memory-core.md) is shipped, and the architecture is a running system
-rather than a design.** `MemoryModule` constructs the pool, the driver, the four adapters,
-the facade and the checkpointer; `RunsService` injects them. Verified against live stores
-from an empty database: one `POST /runs` migrates, boots, and leaves two `episodes` rows,
-one `:Concept`, one `:Fact`, one `semantic_facts` row and nine checkpoints under the runId
-its own response returned. Rows 1, 2, 3, 6, 13 and 15 of `docs/STATUS.md` are
-`implemented`.
-
-**Memory is a second axis, and it does not fall back.** `GOOGLE_API_KEY` selects the model
-half; `DATABASE_URL` + `NEO4J_URI` select the memory half. Configured-but-unreachable exits
-1 in about a second with a message naming the cause — an unreachable Postgres, an
-unreachable Neo4j, or a half-written `.env`. Selecting no-op writers because a configured
-database is missing was the defect; it is not reachable as a runtime path. The
-no-database path is untouched, because a clone with no `.env` still has to serve both
-quickstart curls.
-
-**Implementation found two defects that reading had not.** `ingress` still minted its own
-`runId`, so every run was checkpointed under an identifier that appeared nowhere in its own
-response — nine checkpoint rows on a thread the caller could not name, and a resume that
-could never be asked for. And a half-configured memory axis produced SIGABRT, exit 134 and
-a core dump rather than a message, because Nest aborts the process when a provider factory
-throws. P0-A's lesson holds: a defect found by reading is one defect, and the count is only
-known after the thing runs.
-
-**Fusion landed here, so P2-D is gone from the index rather than left as a ghost.** The
-graph now stores facts as well as concepts — `(:Fact)-[:MENTIONS]->(:Concept)`, keyed on
-the same content hash pgvector uses — so both retrievers draw from one candidate universe
-and a fact found by both paths is scored at the sum of its two reciprocal ranks. That
-changes ADR 0002's account of why fusion failed, which blamed the key; the key was a
-symptom. [ADR 0004](../adr/0004-one-candidate-universe-for-fusion.md) records the decision
-without superseding 0002's still-correct choice to run both stores.
-
-**P2-A shipped, was reopened the same day, and shipped again. All twenty-four criteria are
-met.** Two ticks were wrong, for one shared reason: acceptance was verified on the stub
-model axis and the live model axis was never exercised. The block was environmental —
-nothing on the Node path read `.env`, so a revoked key exported from a shell rc shadowed the
-valid one in the file, and every live call returned `403`. That was recorded as a credential
-problem owned by P1-E. It was not.
-
-With a working key the live axis exposed a defect the stub axis structurally could not.
-`distill` parsed the model response with `try { JSON.parse(...) } catch { return
-EMPTY_EXTRACTION }`, and `gemini-2.5-flash` fences JSON unless
-`responseMimeType: application/json` is set — so every live extraction threw, every catch
-returned an empty set, and `reflect` wrote none of it while the run reported
-`outcome: "success"`. The same defect class this PRD exists to remove, in the axis nobody
-was watching. Both are fixed: the service reads `.env` and names any variable the
-environment shadows, and a malformed extraction now throws an error the retry policy
-retries. Verified live — one run writes 18 facts at 768 dimensions and L2 norm exactly
-`1.000000`, 22 `:Concept` and 18 `:Fact`. Row 16 is `implemented`.
-
-**The rule that came out of it: a criterion verified on a stub is verified against the half
-of the system that cannot fail.** Where a PRD names two independent axes, its criteria have
-to say which axis they were checked on. That is now in `.agents/prd-author.md`.
-
-**A written convention had to move, not just the code.** `.context/conventions.md` said
-containing failure inside the node was the intent and told the next reader not to widen the
-gap. A `retryPolicy` only ever fires on a thrown error, so that goal and retry cannot both
-hold: a node that swallows its own I/O failure makes the policy a decoration. The
-convention now separates throwing from swallowing — I/O nodes throw, and containment
-happens once at the graph boundary, which for a stream means a terminal `StreamEvent.error`
-frame because the response is already committed.
-
-**P1-A is shipped, and the repository now measures its agent.** `packages/eval-harness`
-holds the vocabulary — `Task`, `Trial`, `Transcript`, `Outcome`, `Grader`, `Score`, `Suite`
-— and `yarn eval` runs n trials per task against the real Nest application context, so a
-trial exercises the same `MemoryModule` providers, model axis and checkpointer a request
-would. Two tasks, eleven graders, three reporters. `run-fixture-001.json` is a task rather
-than a file nothing read: its three dormant assertions are named graders, and the seed
-script follows the dataset by importing `EVAL_DATASETS_DIR` instead of spelling a path that
-could go stale.
-
-**The graders that matter read the database, and they refuse to guess.** `reflect` writing
-the episode and MERGEing the entity is asserted from `episodes`, `semantic_facts` and the
-graph, through a new read surface in `memory-core` rather than SQL in the harness. Each such
-grader declares `requires: { memory: 'live' }`, and an unmet requirement stops the suite
-before the first trial — no pass is ever earned against the no-op writers. `turbo.json`'s
-`eval` task declares `GOOGLE_API_KEY`, confirmed by `turbo run eval --dry=json`, so strict
-env mode cannot quietly swap in the canned model set.
-
-**Measured, per axis, on 2026-08-29.** Model `stub` / memory `live`, 5 trials × 2 tasks:
-50%, with `memory-recall-001` at 5/5 and `tool-use-001` at 0/5. Model `live` / memory
-`live`, one trial of `memory-recall-001`: all eleven graders passed, 2 `episodes` rows, 17
-`semantic_facts` rows, 17 `:Fact` nodes and 38 of 38 extracted concepts in the graph. The
-second task has not run on the live model axis — the key's free-tier quota for
-`gemini-2.5-flash` is 20 `generateContent` requests and a 5×2 suite needs about forty — and
-the README says so rather than presenting the stub rate as the suite's.
-
-**The suite is deliberately not at 100%.** `tool-use-001` asks whether the agent reaches for
-the one tool it has. It does not, on either axis: `selectTool` returns `null`, so `act`
-completes in one iteration and never calls `web-search`. That is a real behaviour with a
-number on it, which is the whole point of having a measurement instead of an anecdote.
-
-**Two things came out of implementation that reading had not.** `RunResponse` carries no
-node sequence and no tool calls, so scoring a trajectory needed `RunsService.executeTraced`
-— the graph streamed rather than invoked, with the updates folded back into a final state.
-And `restoreToSeed` alone makes a two-task suite unrepeatable: the Neo4j half is
-database-wide, because neither `:Concept` nor `:Fact` carries a session, so one task's reset
-takes another task's concepts with it. Every reset now applies the seed as well as restoring
-to it.
-
-**One defect is named and left to P1-C.** `IO_RETRY` treats every 4xx as terminal, and a 429
-is not: it arrives with a "please retry in N seconds" hint and today it takes down the whole
-suite. Fixing the retry predicate is a production behaviour change outside P1-A's criteria,
-and P1-C is the PRD that runs evaluation in CI, where the same quota applies.
-
-**P1-C and P2-B are the candidates, and P1-C is the stronger one.** P1-C replaces the
-nightly stub with a tiered pipeline, which is what turns `yarn eval` from a command someone
-remembers to run into a signal; it also owns the 429 defect above and retiring
-`memory-core`'s `test:eval` alias. P2-B is the other: ADR 0002 is provisional until its
-ablation measures whether hybrid beats either store alone, and that measurement is only
-meaningful now that fusion fuses. Both are unblocked — P1-A shipped the `Grader` interface
-they build on.
-
-**[P1-B](P1-B-agent-cassette.md) is drafted and sits in front of P1-C, which the paragraph
-above did not say.** The spine has always drawn `P1-A ──▶ P1-B ──▶ P1-C`, and the reason is
-the one the eval README already records: the pull-request tier P1-C wants is either a live
-tier nobody leaves switched on or a stub tier that measures nothing. P1-B is the third axis
-value — record the model's decisions once, replay them for free, and make every report say
-which of the three produced its number. It is accepted, and it is the PRD in progress. Its size moved from M to L on the way in: the draft's own scope list is a new package, an axis change in `eval-harness`, a hook in the service, two `ORDER BY` fixes, a recorded set and an ADR, and the author flagged M as the top of the band rather than the middle. P0-A is the reason to believe them.
-
-**Drafting it turned up two defects by running rather than reading, and both are in its
-scope.** `turbo.json`'s `eval` task does not declare `EVAL_TRIALS` or `EVAL_OUTPUT_DIR`, and
-Turbo's strict env mode therefore strips both — verified with a probe script in place of the
-`eval` command, which received `DATABASE_URL` and `undefined` for the other two. So the two
-knobs `packages/eval-harness/README.md` documents do not work, which is the false-capability
-class `.context/conventions.md` exists to catch and nothing lints. And the graph retriever's
-tied-score ordering is unstable across a trial reset: twelve facts at equal hop distance
-returned three different orders over three delete-and-reseed cycles, because neither
-`expandFromSeeds` nor `searchByCosine` declares a secondary sort key. That order reaches
-`plan`'s prompt through `rrfMerge`, so any cassette keyed on prompt text needs the
-tiebreaker first. Today's two tasks each seed one fact and cannot produce a tie, which is
-why nothing has failed yet.
-
-**Three documents outlived P2-A and have been corrected.** `README.md` still told a reader
-the memory adapters were not wired and pointed at P2-A as outstanding; `.env.example` still
-warned that setting `GOOGLE_API_KEY` breaks `POST /runs` via a retired embedding model; and
-`docs/STATUS.md`'s closing prose still described eight of its own `implemented` rows as
-pending work. The matrix rows were right and the prose around them was stale, which is the
-failure mode `.context/conventions.md:69` exists to catch and did not, because nothing
-lints prose.
-
-**Tier 3 is unblocked.** `.agents/reviewer.md` rule 10 used to forbid medical and clinical
-terminology, which ruled out the payer-domain vertical. [ADR
-0003](../adr/0003-payer-domain-with-licensing-and-phi-as-the-boundary.md) replaces it: the
-boundary is licensed content, real data and implied clinical authority, not vocabulary. The
-sharp edge is that CPT is AMA-licensed and HCPCS Level I _is_ CPT, so it can never enter
-this repository; ICD-10-CM and HCPCS Level II can. P3-A through P3-D can be drafted against
-a real domain.
-
----
-
-This directory is the backlog. Each PRD is one file with YAML frontmatter; the frontmatter
-is the machine-readable part (`status`, `size`, `depends_on`, `issue`) and the body is the
-argument for why the work is worth doing.
+**Where the detail lives.** Each PRD carries its own risks, its divergences from the design
+that was reviewed, and — where a shipped record turned out to be wrong — the correction that
+followed. P2-A is the one to read first: it shipped, was reopened the same day when two of
+its criteria proved to have been verified against a stub, and shipped again carrying a
+post-ship correction section that explains both wrong ticks.
 
 ## How this works
 
