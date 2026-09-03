@@ -4,7 +4,7 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: '06:00'
     open-pull-requests-limit: 5
@@ -41,7 +41,7 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: '06:00'
     groups:
@@ -57,20 +57,20 @@ updates:
   - package-ecosystem: docker
     directory: /apps/console
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: '06:00'
 
   - package-ecosystem: docker
     directory: /apps/agent-service
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: '06:00'
 
   - package-ecosystem: docker
     directory: /apps/gateway
     schedule:
-      interval: weekly
+      interval: monthly
       day: monday
       time: '06:00'
